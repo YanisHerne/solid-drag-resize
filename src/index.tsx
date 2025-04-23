@@ -85,8 +85,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         const dragY = Math.min(Math.max(e.clientY - dragOffset.y, 0), window.innerHeight)
         console.log(position())
         setPosition({x: dragX, y: dragY});
-        //mainElement!.style.left = dragX + "px";
-        //mainElement!.style.top = dragY + "px";
     }
     const onDragEnd = (_e: MouseEvent) => {
         mainElement!.style.cursor = "grab";
@@ -94,6 +92,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.removeEventListener("mouseup", onDragEnd);
     }
     const onDragStart = (e: MouseEvent) => {
+        if (!props.enabled) return
         mainElement!.style.cursor = "grabbing";
         setOffset({
             x: e.clientX - mainElement!.getBoundingClientRect().left,
