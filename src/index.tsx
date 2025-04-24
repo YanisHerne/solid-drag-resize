@@ -1,15 +1,14 @@
 import {
-    Accessor,
     mergeProps,
-    splitProps,
     ParentComponent,
+    ParentProps,
     Component,
     For,
     JSX,
     createSignal,
-    createMemo,
+    createEffect,
 } from "solid-js";
-import { createStore, produce } from "solid-js/store"
+import { createStore} from "solid-js/store"
 import {
     ResizeDirections,
     Direction,
@@ -17,7 +16,6 @@ import {
     ResizeHandle,
     DirectionMap,
 } from "./resize";
-import { createSign } from "node:crypto";
 
 type RequireAtLeastTwo<T, Keys extends keyof T = keyof T> =
     Pick<T, Exclude<keyof T, Keys>> &
@@ -27,21 +25,12 @@ type RequireAtLeastTwo<T, Keys extends keyof T = keyof T> =
         }[Exclude<Keys, K1>]
     }[Keys]);
 
-type Position = {
+export type Position = {
     x: number;
     y: number;
 }
 
-const isPosition = (obj: any): obj is Position=> {
-    return (
-        typeof obj === "object" &&
-        obj !== null &&
-        typeof obj.x === "number" &&
-        typeof obj.y === "number"
-    )
-}
-
-type Bounds = {
+export type Bounds = {
     top: number;
     right: number;
     bottom: number;
@@ -53,21 +42,13 @@ type Size = {
     width: number;
 }
 
-const DefaultState: State = {
+export type State = Position & Size;
+
+export const DefaultState: State = {
     x: 0,
     y: 0,
     height: 100,
     width: 100,
-}
-
-type State = Position & Size;
-
-const isState = (obj: any): obj is State => {
-    return (
-        obj.height === "number" &&
-        obj.width === "number" &&
-        isPosition(obj)
-    )
 }
 
 const createState = (defaultState: State = DefaultState):
@@ -87,51 +68,99 @@ type ResizeData = State & {
 };
 
 export interface Props {
-    enabled?: boolean;
-    defaultSize?: Size;
-    defaultPosition?: Position;
+    enabled: boolean;
+    dragEnabled?: boolean;
+    resizeEnabled?: boolean;
+    resizeAxes?: {[key in Direction]: boolean};
+    initialSize?: Size;
+    initialPosition?: Position;
+    position?: Position;
+    state?: State;
     minSize?: Size;
     maxSize?: Size;
+    dragHandle?: Component | HTMLElement | string | string[];
+    resizeHandleProps?: ParentProps | {[key in Direction]: ParentProps};
+    disableUserSelect?: boolean;
+    boundary?: "window" | "parent" | HTMLElement | (() => Bounds);
+    classWhileDragging?: string;
+    classWhileResizing?: string;
+    dragStart?: (e: MouseEvent) => void;
+    drag?: (e: MouseEvent, offset: Position, state: State) => void;
+    dragEnd?: (e: MouseEvent, offset: Position, state: State) => void;
+    resizeStart?: (e: MouseEvent) => void;
+    resize?: (
+        e: MouseEvent,
+        direction: Direction,
+        resizeData: ResizeData,
+        state: State
+    ) => void;
+    resizeEnd?: (
+        e: MouseEvent,
+        direction: Direction,
+        resizeData: ResizeData,
+        state: State
+    ) => void;
     [other: string]: unknown;
 }
 
-export const defaultProps: Props = {
+export const defaultProps = {
     enabled: true,
+    disableUserSelect: true
 }
 
 export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
-    const props = mergeProps({enabled: true}, unmergedProps);
-
+    const props = mergeProps(defaultProps, unmergedProps);
     let mainElement: HTMLDivElement | undefined;
-    let dragHandle: string | HTMLElement | undefined;
+    let dragHandle: HTMLElement | undefined;
     const [state, setState] = createState();
 
-    const [offset, setOffset] = createSignal<Position>();
+    if (props.initialPosition) {
+        setState({
+            y: props.initialPosition.y,
+            x: props.initialPosition.x,
+        });
+    }
+    if (props.initialSize) {
+        setState({
+            height: props.initialSize.height,
+            width: props.initialSize.width,
+        });
+    }
+    createEffect(() => { if(props.position) setState(props.position); });
+    createEffect(() => { if(props.state) setState(props.state); });
+
+    const [userSelect, setUserSelect] = createSignal<"unset"|"none"|"all">("unset");
+
+    const [dragging, setDragging] = createSignal<boolean>(false);
+    const [dragOffset, setDragOffset] = createSignal<Position>();
     const onDragMove = (e: MouseEvent) => {
         if (direction()) onDragEnd() // When resizing, don't drag
         mainElement!.style.cursor = "grabbing";
-        const dragOffset: { x: number; y: number; } = offset()!;
+        const offset: { x: number; y: number; } = dragOffset()!;
         const dragX = Math.min(
-            Math.max(e.clientX - dragOffset.x, 0),
+            Math.max(e.clientX - offset.x, 0),
             window.innerWidth - state.width
         );
         const dragY = Math.min(
-            Math.max(e.clientY - dragOffset.y, 0),
+            Math.max(e.clientY - offset.y, 0),
             window.innerHeight - state.height
         );
-        console.log("(" + dragX + ", " + dragY + ")");
         setState({x: dragX, y: dragY});
     }
     const onDragEnd = (_e: MouseEvent | undefined = undefined) => {
+        setDragging(false);
         mainElement!.style.cursor = "grab";
         document.removeEventListener("mousemove", onDragMove);
         document.removeEventListener("mouseup", onDragEnd);
+        if (props.disableUserSelect) setUserSelect("unset");
     }
     const onDragStart = (e: MouseEvent) => {
-        if (!props.enabled) return
-        if (direction()) onDragEnd() // When resizing, don't drag
+        setDragging(true);
+        if (!props.enabled || props.dragEnabled === false) return;
+        if (direction()) onDragEnd(); // When resizing, don't drag
+        if (props.disableUserSelect) setUserSelect("none");
         mainElement!.style.cursor = "grabbing";
-        setOffset({
+        setDragOffset({
             x: e.clientX - mainElement!.getBoundingClientRect().left,
             y: e.clientY - mainElement!.getBoundingClientRect().top
         });
@@ -139,6 +168,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.addEventListener("mouseup", onDragEnd);
     }
 
+    const [resizing, setResizing] = createSignal<boolean>(false);
     const [direction, setDirection] = createSignal<Direction>();
     const [resizeOffset, setResizeOffset] = createSignal<ResizeData>();
     const onResizeMove = (e: MouseEvent) => {
@@ -215,13 +245,18 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 break;
         }
     }
-    const onResizeEnd = (_e: MouseEvent) => {
+    const onResizeEnd = (e: MouseEvent) => {
+        if (props.resizeEnd)
+            props.resizeEnd(e, direction()!, resizeOffset()!, state);
+        setResizing(false);
         setDirection(undefined);
         document.removeEventListener("mousemove", onResizeMove);
         document.removeEventListener("mouseup", onResizeEnd);
     };
     const onResizeStart: ResizeCallback = (e, direction) => {
-        if (!props.enabled) return
+        if (!props.enabled || props.resizeEnabled === false) return
+        if (props.resizeStart) props.resizeStart(e);
+        setResizing(true);
         setDirection(direction);
         setResizeOffset({
             offsetY: e.clientY - mainElement!.getBoundingClientRect().top,
@@ -239,16 +274,22 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
 
     return (
         <div
+            {...props}
             ref={mainElement}
             style={{
                 position: "absolute",
                 top: state.y + "px",
                 left: state.x + "px",
                 height: state.height + "px",
-                width: state.width + "px"
+                width: state.width + "px",
+                "user-select": userSelect(),
+                "-webkit-user-select": userSelect(),
             }}
-            on:mousedown={onDragStart}
-            {...props}>
+            classList={{
+                [props.classWhileDragging!]: dragging(),
+                [props.classWhileResizing!]: resizing(),
+            }}
+            on:mousedown={onDragStart}>
             <For each={ResizeDirections}>
                 {(direction) => {
                     return (<ResizeHandle
