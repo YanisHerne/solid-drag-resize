@@ -12,10 +12,12 @@ import {
 import { createStore, produce } from "solid-js/store"
 import {
     ResizeDirections,
+    Direction,
     ResizeCallback,
     ResizeHandle,
     DirectionMap,
 } from "./resize";
+import { createSign } from "node:crypto";
 
 type RequireAtLeastTwo<T, Keys extends keyof T = keyof T> =
     Pick<T, Exclude<keyof T, Keys>> &
@@ -69,22 +71,20 @@ const isState = (obj: any): obj is State => {
 }
 
 const createState = (defaultState: State = DefaultState):
-[ get: State, (to: State | Position) => void ] => {
+[ get: State, (to: RequireAtLeastTwo<State>) => void ] => {
     const [state, setState] = createStore<State>(defaultState);
-    const update =(to: State | Position) => {
-        setState(
-            produce((prevState) => {
-                prevState.x = to.x;
-                prevState.y = to.y;
-                if (isState(to)) {
-                    prevState.height = to.height;
-                    prevState.width = to.width;
-                }
-            })
-        );
+    const update =(to: RequireAtLeastTwo<State>) => {
+        setState(to);
     };
     return [state, update];
 }
+
+type ResizeData = State & {
+    offsetY: number;
+    offsetX: number;
+    initY: number;
+    initX: number;
+};
 
 export interface Props {
     enabled?: boolean;
@@ -99,20 +99,8 @@ export const defaultProps: Props = {
     enabled: true,
 }
 
-type PropsKeys = keyof Props;
-
 export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const props = mergeProps({enabled: true}, unmergedProps);
-    /*
-    const propsKeysArr: PropsKeys[] = [
-        "enabled",
-        "defaultSize",
-        "defaultPosition",
-        "minSize",
-        "maxSize"
-    ];
-    const [localProps, otherProps] = splitProps(mergedProps, propsKeysArr);
-    */
 
     let mainElement: HTMLDivElement | undefined;
     let dragHandle: string | HTMLElement | undefined;
@@ -120,19 +108,28 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
 
     const [offset, setOffset] = createSignal<Position>();
     const onDragMove = (e: MouseEvent) => {
+        if (direction()) onDragEnd() // When resizing, don't drag
         mainElement!.style.cursor = "grabbing";
         const dragOffset: { x: number; y: number; } = offset()!;
-        const dragX = Math.min(Math.max(e.clientX - dragOffset.x, 0), window.innerWidth);
-        const dragY = Math.min(Math.max(e.clientY - dragOffset.y, 0), window.innerHeight)
+        const dragX = Math.min(
+            Math.max(e.clientX - dragOffset.x, 0),
+            window.innerWidth - state.width
+        );
+        const dragY = Math.min(
+            Math.max(e.clientY - dragOffset.y, 0),
+            window.innerHeight - state.height
+        );
+        console.log("(" + dragX + ", " + dragY + ")");
         setState({x: dragX, y: dragY});
     }
-    const onDragEnd = (_e: MouseEvent) => {
+    const onDragEnd = (_e: MouseEvent | undefined = undefined) => {
         mainElement!.style.cursor = "grab";
         document.removeEventListener("mousemove", onDragMove);
         document.removeEventListener("mouseup", onDragEnd);
     }
     const onDragStart = (e: MouseEvent) => {
         if (!props.enabled) return
+        if (direction()) onDragEnd() // When resizing, don't drag
         mainElement!.style.cursor = "grabbing";
         setOffset({
             x: e.clientX - mainElement!.getBoundingClientRect().left,
@@ -142,14 +139,100 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.addEventListener("mouseup", onDragEnd);
     }
 
+    const [direction, setDirection] = createSignal<Direction>();
+    const [resizeOffset, setResizeOffset] = createSignal<ResizeData>();
     const onResizeMove = (e: MouseEvent) => {
-        return;
+        const offset: {
+            offsetY: number;
+            offsetX: number;
+            initY: number;
+            initX: number;
+            y: number;
+            x: number;
+            height: number;
+            width: number;
+        } = resizeOffset()!;
+        const newY = e.clientY - offset.offsetY;
+        const newX = e.clientX - offset.offsetX;
+        const deltaY = e.clientY - offset.initY;
+        const deltaX = e.clientX - offset.initX;
+        switch(direction()) {
+            case "top":
+                setState({
+                    y: newY,
+                    height: offset.height - deltaY,
+                });
+                break;
+            case "right":
+                setState({
+                    x: offset.x,
+                    width: offset.width + deltaX,
+                });
+                break;
+            case "bottom":
+                setState({
+                    y: offset.y,
+                    height: offset.height + deltaY,
+                });
+                break;
+            case "left":
+                setState({
+                    x: newX,
+                    width: offset.width - deltaX,
+                });
+                break;
+            case "topRight":
+                setState({
+                    y: newY,
+                    x: offset.x,
+                    height: offset.height - deltaY,
+                    width: offset.width + deltaX,
+                });
+                break;
+            case "bottomRight":
+                setState({
+                    y: offset.y,
+                    x: offset.x,
+                    height: offset.height + deltaY,
+                    width: offset.width + deltaX,
+                });
+                break;
+            case "bottomLeft":
+                setState({
+                    y: offset.y,
+                    x: newX,
+                    height: offset.height + deltaY,
+                    width: offset.width - deltaX,
+                });
+                break;
+            case "topLeft":
+                setState({
+                    y: newY,
+                    x: newX,
+                    height: offset.height - deltaY,
+                    width: offset.width - deltaX,
+                });
+                break;
+        }
     }
-    const onResizeEnd = (e: MouseEvent) => {
-        return;
+    const onResizeEnd = (_e: MouseEvent) => {
+        setDirection(undefined);
+        document.removeEventListener("mousemove", onResizeMove);
+        document.removeEventListener("mouseup", onResizeEnd);
     };
-    const onResizeStart: ResizeCallback = (event, direction) => {
-        event.currentTarget.style.cursor = DirectionMap[direction] + "-resize";
+    const onResizeStart: ResizeCallback = (e, direction) => {
+        if (!props.enabled) return
+        setDirection(direction);
+        setResizeOffset({
+            offsetY: e.clientY - mainElement!.getBoundingClientRect().top,
+            offsetX: e.clientX - mainElement!.getBoundingClientRect().left,
+            initY: e.clientY,
+            initX: e.clientX,
+            x: state.x,
+            y: state.y,
+            height: state.height,
+            width: state.width
+        });
         document.addEventListener("mousemove", onResizeMove);
         document.addEventListener("mouseup", onResizeEnd);
     };
@@ -161,6 +244,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 position: "absolute",
                 top: state.y + "px",
                 left: state.x + "px",
+                height: state.height + "px",
+                width: state.width + "px"
             }}
             on:mousedown={onDragStart}
             {...props}>

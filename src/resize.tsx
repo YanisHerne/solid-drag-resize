@@ -28,7 +28,7 @@ export enum DirectionMap {
 const rowStyles = {
     position: "absolute",
     width: "100%",
-    height: "10px",
+    height: "15px",
     left: "0px",
     right: "0px",
     "z-index": 1,
@@ -36,7 +36,7 @@ const rowStyles = {
 
 const colStyles = {
     position: "absolute",
-    width: "10px",
+    width: "15px",
     height: "100%",
     top: "0px",
     bottom: "0px",
@@ -45,54 +45,54 @@ const colStyles = {
 
 const cornerStyles = {
     position: "absolute",
-    width: "20px",
-    height: "20px",
+    width: "25px",
+    height: "25px",
     "z-index": 1,
 } as const;
 
 const resizeStyles: { [key in Direction]: JSX.CSSProperties } = {
     top: {
         ...rowStyles,
-        top: "-5px",
+        top: "-7.5px",
         cursor: DirectionMap.top + "-resize"
     },
     right: {
         ...colStyles,
-        right: "-5px",
+        right: "-7.5px",
         cursor: DirectionMap.right + "-resize"
     },
     bottom: {
         ...rowStyles,
-        bottom: "-5px",
+        bottom: "-7.5px",
         cursor: DirectionMap.bottom + "-resize"
     },
     left: {
         ...colStyles,
-        left: "-5px",
+        left: "-7.5px",
         cursor: DirectionMap.left + "-resize"
     },
     topRight: {
         ...cornerStyles,
-        top: "-10px",
-        right: "-10px",
+        top: "-12.5px",
+        right: "-12.5px",
         cursor: DirectionMap.topRight + "-resize"
     },
     bottomRight: {
         ...cornerStyles,
-        right: "-10px",
-        bottom: "-10px",
+        right: "-12.5px",
+        bottom: "-12.5px",
         cursor: DirectionMap.bottomRight + "-resize"
     },
     bottomLeft: {
         ...cornerStyles,
-        bottom: "-10px",
-        left: "-10px",
+        bottom: "-12.5px",
+        left: "-12.5px",
         cursor: DirectionMap.bottomLeft + "-resize"
     },
     topLeft : {
         ...cornerStyles,
-        top: "-10px",
-        left: "-10px",
+        top: "-12.5px",
+        left: "-12.5px",
         cursor: DirectionMap.topLeft + "-resize"
     },
 } as const
@@ -119,7 +119,7 @@ export const ResizeHandle: Component<ResizeProps> = (unmergedProps) => {
     return (
         <div
             style = { resizeStyles[props.direction] }
-            onclick = { onResize }
+            on:mousedown = { onResize }
             {...props}>
         </div>
     )
