@@ -1,4 +1,4 @@
-import { mergeProps, Component, JSX } from "solid-js";
+import { mergeProps, ParentComponent, JSX } from "solid-js";
 import { DOMElement } from "solid-js/jsx-runtime";
 
 export const ResizeDirections = [
@@ -110,7 +110,7 @@ interface ResizeProps {
     resizeCallback: ResizeCallback,
 }
 
-export const ResizeHandle: Component<ResizeProps> = (unmergedProps) => {
+export const ResizeHandle: ParentComponent<ResizeProps> = (unmergedProps) => {
     const props = mergeProps({enabled: true}, unmergedProps);
     const onResize: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
         props.resizeCallback(event, props.direction)
@@ -121,6 +121,7 @@ export const ResizeHandle: Component<ResizeProps> = (unmergedProps) => {
             style = { resizeStyles[props.direction] }
             on:mousedown = { onResize }
             {...props}>
+            {props.children}
         </div>
     )
 }

@@ -11,6 +11,7 @@ const App: Component = () => {
     const [resizeEnabled, setResizeEnabled] = createSignal<boolean>(true);
     const [position, setPosition] = createSignal<Position>({x:0,y:0});
     const [state, setState] = createSignal<State>(DefaultState);
+    const [handleEnabled, setHandleEnabled] = createSignal<boolean>(false);
 
     return (
         <div class={styles.App}>
@@ -37,17 +38,60 @@ const App: Component = () => {
             })}>
                 Click to jump to (100, 100) with size (100, 100)
             </button>
+            <button onclick={() => setHandleEnabled(!handleEnabled())}>
+                Click to {handleEnabled() ? "disable" : "enable"} the drag handle
+            </button>
             <DragAndResize
                 class={styles.DragAndResize}
-                styles={{ background: "grey" }}
+                style={{ "border-radius": "0.5rem" }}
                 enabled={enabled()}
                 dragEnabled={dragEnabled()}
                 resizeEnabled={resizeEnabled()}
+                initialPosition={{x: 10, y: 10}}
+                initialSize={{width: 150, height: 150}}
                 position={position()}
                 state={state()}
+                boundary={() => {return {top: 0, left: 0, right: 0, bottom: 0}}}
+                dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"
-            />
+                dragStart={(e) => {
+                    console.log("Drag started, parameter below:");
+                    console.log({event: e});
+                }}
+                drag={(e, offset, state) => {
+                    console.log("Dragging, parameters below:");
+                    console.log({event: e, offset: offset, state: state});
+                }}
+                dragEnd={(e, offset, state) => {
+                    console.log("Drag ended, parameters below:")
+                    console.log({event: e, offset: offset, state: state});
+                }}
+                resizeStart={(e) => {
+                    console.log("Resize started, parameter below")
+                    console.log({event: e});
+                }}
+                resize={(e, dir, resizeData, state) => {
+                    console.log("Resizing");
+                    console.log({
+                        event: e,
+                        direction: dir,
+                        resizeData: resizeData,
+                        state: state
+                    });
+                }}
+                resizeEnd={(e, dir, resizeData, state) => {
+                    console.log("Resize ended");
+                    console.log({
+                        event: e,
+                        direction: dir,
+                        resizeData: resizeData,
+                        state: state
+                    });
+                }}
+            >
+                <div class={styles.DragHandle} classList={{"handle": true}} />
+            </DragAndResize>
         </div>
     );
 };
