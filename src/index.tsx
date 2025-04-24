@@ -4,10 +4,18 @@ import {
     splitProps,
     ParentComponent,
     Component,
-    createComputed,
+    For,
+    JSX,
     createSignal,
-    createMemo
+    createMemo,
 } from "solid-js";
+import { createStore, produce } from "solid-js/store"
+import {
+    ResizeDirections,
+    ResizeCallback,
+    ResizeHandle,
+    DirectionMap,
+} from "./resize";
 
 type RequireAtLeastTwo<T, Keys extends keyof T = keyof T> =
     Pick<T, Exclude<keyof T, Keys>> &
@@ -22,9 +30,13 @@ type Position = {
     y: number;
 }
 
-const Origin: Position = {
-    x: 0,
-    y: 0
+const isPosition = (obj: any): obj is Position=> {
+    return (
+        typeof obj === "object" &&
+        obj !== null &&
+        typeof obj.x === "number" &&
+        typeof obj.y === "number"
+    )
 }
 
 type Bounds = {
@@ -39,10 +51,39 @@ type Size = {
     width: number;
 }
 
-const createPosition = (defaultOffset: Position = Origin):
-        [ Accessor<Position>, (to: Position) => void ] => {
-    const [offset, setOffset] = createSignal<Position>(defaultOffset);
-    return [offset, (to: Position) => setOffset(to)];
+const DefaultState: State = {
+    x: 0,
+    y: 0,
+    height: 100,
+    width: 100,
+}
+
+type State = Position & Size;
+
+const isState = (obj: any): obj is State => {
+    return (
+        obj.height === "number" &&
+        obj.width === "number" &&
+        isPosition(obj)
+    )
+}
+
+const createState = (defaultState: State = DefaultState):
+[ get: State, (to: State | Position) => void ] => {
+    const [state, setState] = createStore<State>(defaultState);
+    const update =(to: State | Position) => {
+        setState(
+            produce((prevState) => {
+                prevState.x = to.x;
+                prevState.y = to.y;
+                if (isState(to)) {
+                    prevState.height = to.height;
+                    prevState.width = to.width;
+                }
+            })
+        );
+    };
+    return [state, update];
 }
 
 export interface Props {
@@ -74,17 +115,16 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     */
 
     let mainElement: HTMLDivElement | undefined;
-    let dragHandle: HTMLElement | undefined;
+    let dragHandle: string | HTMLElement | undefined;
+    const [state, setState] = createState();
 
     const [offset, setOffset] = createSignal<Position>();
-    const [position, setPosition] = createPosition();
     const onDragMove = (e: MouseEvent) => {
         mainElement!.style.cursor = "grabbing";
         const dragOffset: { x: number; y: number; } = offset()!;
         const dragX = Math.min(Math.max(e.clientX - dragOffset.x, 0), window.innerWidth);
         const dragY = Math.min(Math.max(e.clientY - dragOffset.y, 0), window.innerHeight)
-        console.log(position())
-        setPosition({x: dragX, y: dragY});
+        setState({x: dragX, y: dragY});
     }
     const onDragEnd = (_e: MouseEvent) => {
         mainElement!.style.cursor = "grab";
@@ -102,17 +142,37 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.addEventListener("mouseup", onDragEnd);
     }
 
+    const onResizeMove = (e: MouseEvent) => {
+        return;
+    }
+    const onResizeEnd = (e: MouseEvent) => {
+        return;
+    };
+    const onResizeStart: ResizeCallback = (event, direction) => {
+        event.currentTarget.style.cursor = DirectionMap[direction] + "-resize";
+        document.addEventListener("mousemove", onResizeMove);
+        document.addEventListener("mouseup", onResizeEnd);
+    };
+
     return (
         <div
             ref={mainElement}
             style={{
                 position: "absolute",
-                top: position().y + "px",
-                left: position().x + "px",
+                top: state.y + "px",
+                left: state.x + "px",
             }}
             on:mousedown={onDragStart}
             {...props}>
+            <For each={ResizeDirections}>
+                {(direction) => {
+                    return (<ResizeHandle
+                        direction={direction}
+                        resizeCallback={onResizeStart}/>
+                    )
+                }}
+            </For>
             { props.children }
         </div>
-    )
+    );
 }
