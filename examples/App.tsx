@@ -49,9 +49,10 @@ const App: Component = () => {
                 resizeEnabled={resizeEnabled()}
                 initialPosition={{x: 10, y: 10}}
                 initialSize={{width: 150, height: 150}}
+                maxSize={{width: 500, height: 500}}
                 position={position()}
                 state={state()}
-                boundary={() => {return {top: 0, left: 0, right: 0, bottom: 0}}}
+                boundary={"parent"}
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"

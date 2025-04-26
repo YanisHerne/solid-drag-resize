@@ -2,9 +2,7 @@ import {
     mergeProps,
     ParentComponent,
     ParentProps,
-    Component,
     For,
-    JSX,
     createSignal,
     createEffect,
     createMemo,
@@ -16,7 +14,6 @@ import {
     Direction,
     ResizeCallback,
     ResizeHandle,
-    DirectionMap,
 } from "./resize";
 
 type RequireAtLeastTwo<T, Keys extends keyof T = keyof T> =
@@ -73,12 +70,38 @@ const createState = (defaultState: State = DefaultState):
     return [state, update];
 }
 
-type ResizeData = State & {
+type ResizeData = {
     offsetY: number;
     offsetX: number;
-    initY: number;
-    initX: number;
+    init: State & {
+        clientY: number;
+        clientX: number;
+        right: number;
+        bottom: number;
+    };
+    new: State;
 };
+
+const defaultResizeData: ResizeData = {
+    offsetY: 0,
+    offsetX: 0,
+    init: {
+        y: 0,
+        x: 0,
+        height: 0,
+        width: 0,
+        clientY: 0,
+        clientX: 0,
+        right: 0,
+        bottom: 0,
+    },
+    new: {
+        y: 0,
+        x: 0,
+        height: 0,
+        width: 0,
+    },
+}
 
 export interface Props {
     /**
@@ -215,15 +238,14 @@ export const defaultProps = {
     enabled: true,
     disableUserSelect: true,
     minSize: {
-        height: 20,
-        width: 20,
+        height: 80,
+        width: 80,
     },
 }
 
 export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const props = mergeProps(defaultProps, unmergedProps);
     let mainElement: HTMLDivElement | undefined;
-    let dragHandle: HTMLElement | undefined;
     const [state, setState] = createState();
 
     onMount(() => {
@@ -244,34 +266,53 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     createEffect(() => { if (props.state) setState(props.state); });
     createEffect(() => { if (props.ref) props.ref = mainElement; });
 
+    const observer = new ResizeObserver(() => {
+        setBounds(calculateBounds());
+    });
+    const [nowObserving, setNowObserving] = createSignal<HTMLElement>(undefined!);
     const [bounds, setBounds] = createSignal<Bounds>(defaultBounds);
     const calculateBounds = () => {
+        if (!mainElement) return defaultBounds;
         let bounds: Bounds;
         if (props.boundary === "parent") {
-            const rect = mainElement!.parentElement?.getBoundingClientRect()!;
+            const element = mainElement!.parentElement!;
+            const rect = element.getBoundingClientRect();
             bounds = {
                 top: rect.top,
-                right: rect.right,
-                bottom: rect.bottom,
+                right: window.innerWidth - rect.right,
+                bottom: window.innerHeight - rect.bottom,
                 left: rect.left,
             };
+            if (element != nowObserving()) {
+                observer.disconnect();
+                observer.observe(element);
+            }
+            setNowObserving(element);
         } else if (props.boundary instanceof HTMLElement) {
             const rect = props.boundary.getBoundingClientRect();
             bounds = {
                 top: rect.top,
-                right: rect.right,
-                bottom: rect.bottom,
+                right: window.innerWidth - rect.right,
+                bottom: window.innerHeight - rect.bottom,
                 left: rect.left,
             };
+            if (props.boundary != nowObserving()) {
+                observer.disconnect();
+                observer.observe(props.boundary);
+            }
+            setNowObserving(props.boundary);
         } else if (typeof props.boundary === "function") {
+            observer.disconnect();
             bounds = props.boundary();
         }
         else { // Default to window bounds
+            observer.disconnect();
             bounds = defaultBounds;
         }
-        return bounds
+        return bounds;
     }
-    createMemo(() => setBounds(calculateBounds()));
+    createEffect(() => setBounds(calculateBounds()));
+    createEffect(() => console.log(bounds()));
 
     const [userSelect, setUserSelect] = createSignal<"unset"|"none"|"all">("unset");
 
@@ -330,71 +371,82 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     }
 
     const [direction, setDirection] = createSignal<Direction>();
-    const [resizeOffset, setResizeOffset] = createSignal<ResizeData>();
+    const [resizeEvent, setResizeEvent] = createStore<ResizeData>(defaultResizeData);
     const onResizeMove = (e: MouseEvent) => {
-        const offset: {
-            offsetY: number;
-            offsetX: number;
-            initY: number;
-            initX: number;
-            y: number;
-            x: number;
-            height: number;
-            width: number;
-        } = resizeOffset()!;
-        const newY = e.clientY - offset.offsetY;
-        const newX = e.clientX - offset.offsetX;
-        const deltaY = e.clientY - offset.initY;
-        const deltaX = e.clientX - offset.initX;
+        const resizeData: ResizeData = resizeEvent;
+        const newY = e.clientY - resizeData.offsetY;
+        const newX = e.clientX - resizeData.offsetX;
+        const deltaY = e.clientY - resizeData.init.clientY;
+        const deltaX = e.clientX - resizeData.init.clientX;
         const boundary: Bounds = bounds();
         if (props.resize)
-            props.resize(e, direction()!, resizeOffset()!, state);
+            props.resize(e, direction()!, resizeEvent, state);
+        let maxSize: Size = {height: Infinity, width: Infinity};
+        if (props.maxSize) {
+            maxSize = {
+                height: props.maxSize.height,
+                width: props.maxSize.width,
+            };
+        }
         const top = {
-            y: newY,
-            height: offset.height - deltaY,
+            y: clamp(
+                newY,
+                Math.max(boundary.top, resizeData.init.y + resizeData.init.height - maxSize.height),
+                resizeData.init.y + resizeData.init.height - props.minSize.height,
+            ),
+            height: clamp(
+                resizeData.init.height - deltaY,
+                props.minSize.height,
+                maxSize.height,
+            ),
         }
         const right = {
-            x: offset.x,
-            width: offset.width + deltaX,
+            x: resizeData.init.x,
+            width: clamp(
+                resizeData.init.width + deltaX,
+                props.minSize.width,
+                Math.min(
+                    window.innerWidth - resizeData.init.x - boundary.right,
+                    maxSize.width,
+                ),
+            ),
         }
         const bottom = {
-            y: offset.y,
-            height: offset.height + deltaY,
+            y: resizeData.init.y,
+            height: clamp(
+                resizeData.init.height + deltaY,
+                props.minSize.height,
+                Math.min(
+                    window.innerHeight - resizeData.init.y - boundary.bottom,
+                    maxSize.height,
+                ),
+            ),
         };
         const left = {
-            x: newX,
-            width: offset.width - deltaX
+            x: clamp(
+                newX,
+                Math.max(boundary.left, resizeData.init.x + resizeData.init.width - maxSize.height),
+                resizeData.init.x + resizeData.init.width - props.minSize.width,
+            ),
+            width: clamp(
+                resizeData.init.width - deltaX,
+                props.minSize.width,
+                maxSize.width,
+            ),
         }
-        switch(direction()) {
-            case "top":
-                setState(top);
-                break;
-            case "right":
-                setState(right);
-                break;
-            case "bottom":
-                setState(bottom);
-                break;
-            case "left":
-                setState(left);
-                break;
-            case "topRight":
-                setState({...top, ...right});
-                break;
-            case "bottomRight":
-                setState({...right, ...bottom});
-                break;
-            case "bottomLeft":
-                setState({...bottom, ...left});
-                break;
-            case "topLeft":
-                setState({...left, ...top});
-                break;
-        }
+        const d = direction()
+        if (d === "top") setState(top);
+        if (d === "right") setState(right);
+        if (d === "bottom") setState(bottom);
+        if (d === "left") setState(left);
+        if (d === "topRight") setState({...top, ...right});
+        if (d === "bottomRight") setState({...right, ...bottom});
+        if (d === "bottomLeft") setState({...bottom, ...left});
+        if (d === "topLeft") setState({...left, ...top});
     }
     const onResizeEnd = (e: MouseEvent) => {
         if (props.resizeEnd)
-            props.resizeEnd(e, direction()!, resizeOffset()!, state);
+            props.resizeEnd(e, direction()!, resizeEvent, state);
         setResizing(false);
         setDirection(undefined);
         document.removeEventListener("mousemove", onResizeMove);
@@ -405,38 +457,38 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         if (props.resizeStart) props.resizeStart(e);
         setResizing(true);
         setDirection(direction);
-        setResizeOffset({
-            offsetY: e.clientY - mainElement!.getBoundingClientRect().top,
-            offsetX: e.clientX - mainElement!.getBoundingClientRect().left,
-            initY: e.clientY,
-            initX: e.clientX,
-            x: state.x,
-            y: state.y,
-            height: state.height,
-            width: state.width
+        const rect = mainElement!.getBoundingClientRect()
+        setResizeEvent({
+            offsetY: e.clientY - rect.top,
+            offsetX: e.clientX - rect.left,
+            init: {
+                y: state.y,
+                x: state.x,
+                height: state.height,
+                width: state.width,
+                clientY: e.clientY,
+                clientX: e.clientX,
+                right: rect.right,
+                bottom: rect.bottom,
+            }
         });
         document.addEventListener("mousemove", onResizeMove);
         document.addEventListener("mouseup", onResizeEnd);
     };
 
     const manageDragHandle = () => {
-        console.log("Managing" + JSON.stringify(props.dragHandle));
         if (!props.dragHandle && mainElement) {
-            console.log("1");
             mainElement.addEventListener("mousedown", onDragStart);
         } else {
             if (mainElement) mainElement.removeEventListener("mousedown", onDragStart);
             if (props.dragHandle instanceof HTMLElement) {
 
-                console.log("2");
                 props.dragHandle.addEventListener("mousedown", onDragStart);
             } else if (typeof(props.dragHandle) === "string") {
-                console.log("3");
                 document.querySelectorAll(props.dragHandle).forEach((handle) => {
                     handle.addEventListener("mousedown", onDragStart as ((e: Event) => void));
                 });
             } else if (Array.isArray(props.dragHandle) && props.dragHandle.every((i) => typeof(i) === "string")) {
-                console.log("4");
                 props.dragHandle.forEach((handleName) => {
                     document.querySelectorAll(handleName).forEach((handle) => {
                         handle.addEventListener("mousedown", onDragStart as ((e: Event) => void));
