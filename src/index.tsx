@@ -182,7 +182,14 @@ export interface Props {
     * Drag boundaries currently broken, default is usable
     * at inset of 0 to all sides of the window
     */
-    boundary?: "window" | "parent" | HTMLElement | (() => Bounds);
+    boundary?: "window" | "parent" | HTMLElement | Bounds | (() => Bounds);
+    /**
+     * When true, if the `boundary` prop is set to "window", "parent", or
+     * HTMLElement, then any resizing events will be tracked to ensure
+     * that this element remains inside the boundary, though the minimum
+     * size will still be obeyed.
+     */
+    ensureInsideBoundary?: boolean;
     /**
     * A class that will be added to the component whenever it
     * is being actively dragged.
@@ -267,7 +274,9 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     createEffect(() => { if (props.ref) props.ref = mainElement; });
 
     const observer = new ResizeObserver(() => {
-        setBounds(calculateBounds());
+        const boundary = calculateBounds()
+        setBounds(boundary);
+        ensureInside(boundary);
     });
     const [nowObserving, setNowObserving] = createSignal<HTMLElement>(undefined!);
     const [bounds, setBounds] = createSignal<Bounds>(defaultBounds);
@@ -304,6 +313,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         } else if (typeof props.boundary === "function") {
             observer.disconnect();
             bounds = props.boundary();
+        } else if (typeof props.boundary === "object") {
+            bounds = props.boundary;
         }
         else { // Default to window bounds
             observer.disconnect();
@@ -314,7 +325,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     createEffect(() => setBounds(calculateBounds()));
     createEffect(() => console.log(bounds()));
 
-    const [userSelect, setUserSelect] = createSignal<"unset"|"none"|"all">("unset");
+    const [userSelect, setUserSelect] = createSignal<boolean>(true);
 
     const [dragging, setDragging] = createSignal<boolean>(false);
     const [resizing, setResizing] = createSignal<boolean>(false);
@@ -350,7 +361,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         mainElement!.style.cursor = "grab";
         document.removeEventListener("mousemove", onDragMove);
         document.removeEventListener("mouseup", onDragEnd);
-        if (props.disableUserSelect) setUserSelect("unset");
+        if (props.disableUserSelect) setUserSelect(true);
     }
     const onDragStart = (e: MouseEvent) => {
         if (!props.enabled || props.dragEnabled === false) return;
@@ -360,7 +371,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         }
         if (props.dragStart) props.dragStart(e);
         setDragging(true);
-        if (props.disableUserSelect) setUserSelect("none");
+        if (props.disableUserSelect) setUserSelect(false);
         mainElement!.style.cursor = "grabbing";
         setDragOffset({
             x: e.clientX - mainElement!.getBoundingClientRect().left,
@@ -476,6 +487,33 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.addEventListener("mouseup", onResizeEnd);
     };
 
+    const ensureInside = (boundary: Bounds) => {
+        console.log(boundary);
+        const rect = mainElement!.getBoundingClientRect();
+        const newState = {
+            y: clamp(
+                rect.y,
+                boundary.top,
+                Math.max(0, window.innerHeight - rect.height - boundary.bottom),
+            ),
+            x: clamp(
+                rect.x,
+                boundary.left,
+                Math.max(0, window.innerWidth - rect.width - boundary.right),
+            ),
+            height: Math.max(
+                Math.min(rect.height, window.innerHeight - boundary.top - boundary.bottom),
+                props.minSize.height,
+            ),
+            width: Math.max(
+                Math.min(rect.width, window.innerWidth - boundary.left - boundary.right),
+                props.minSize.width,
+            ),
+        };
+        setState(newState);
+    }
+    window.addEventListener("resize", () => ensureInside(bounds()));
+
     const manageDragHandle = () => {
         if (!props.dragHandle && mainElement) {
             mainElement.addEventListener("mousedown", onDragStart);
@@ -511,8 +549,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 left: state.x + "px",
                 height: state.height + "px",
                 width: state.width + "px",
-                "user-select": userSelect(),
-                "-webkit-user-select": userSelect(),
+                "user-select": userSelect() ? "auto" : "none",
+                "-webkit-user-select": userSelect() ? "auto" : "none",
             }, props.style)}
             classList={Object.assign({
                 [props.classWhileDragging!]: dragging(),
