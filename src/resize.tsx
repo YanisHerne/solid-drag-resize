@@ -1,7 +1,7 @@
 import { mergeProps, ParentComponent, JSX } from "solid-js";
 import { DOMElement } from "solid-js/jsx-runtime";
 
-export const ResizeDirections = [
+export const directions = [
     "top",
     "right",
     "bottom",
@@ -12,18 +12,7 @@ export const ResizeDirections = [
     "topLeft"
 ] as const;
 
-export type Direction = typeof ResizeDirections[number];
-
-export enum DirectionMap {
-    top = "n",
-    right = "e",
-    bottom = "s",
-    left = "w",
-    topRight = "ne",
-    bottomRight = "se",
-    bottomLeft = "sw",
-    topLeft = "nw",
-}
+export type Direction = typeof directions [number];
 
 const rowStyles = {
     position: "absolute",
@@ -54,46 +43,46 @@ const resizeStyles: { [key in Direction]: JSX.CSSProperties } = {
     top: {
         ...rowStyles,
         top: "-7.5px",
-        cursor: DirectionMap.top + "-resize"
+        cursor: "n-resize"
     },
     right: {
         ...colStyles,
         right: "-7.5px",
-        cursor: DirectionMap.right + "-resize"
+        cursor: "e-resize"
     },
     bottom: {
         ...rowStyles,
         bottom: "-7.5px",
-        cursor: DirectionMap.bottom + "-resize"
+        cursor: "s-resize"
     },
     left: {
         ...colStyles,
         left: "-7.5px",
-        cursor: DirectionMap.left + "-resize"
+        cursor: "w-resize"
     },
     topRight: {
         ...cornerStyles,
         top: "-12.5px",
         right: "-12.5px",
-        cursor: DirectionMap.topRight + "-resize"
+        cursor: "ne-resize"
     },
     bottomRight: {
         ...cornerStyles,
         right: "-12.5px",
         bottom: "-12.5px",
-        cursor: DirectionMap.bottomRight + "-resize"
+        cursor: "se-resize"
     },
     bottomLeft: {
         ...cornerStyles,
         bottom: "-12.5px",
         left: "-12.5px",
-        cursor: DirectionMap.bottomLeft + "-resize"
+        cursor: "sw-resize"
     },
     topLeft : {
         ...cornerStyles,
         top: "-12.5px",
         left: "-12.5px",
-        cursor: DirectionMap.topLeft + "-resize"
+        cursor: "nw-resize"
     },
 } as const
 

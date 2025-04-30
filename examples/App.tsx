@@ -2,15 +2,15 @@ import type { Component } from "solid-js";
 import { createSignal } from "solid-js"
 import logo from "./logo.svg";
 import styles from "./App.module.css";
-import { DragAndResize, Position, State, DefaultState } from "src";
+import { DragAndResize, Position, State, defaultState } from "src";
 
 const App: Component = () => {
     const [enabled, setEnabled] = createSignal<boolean>(true);
 
     const [dragEnabled, setDragEnabled] = createSignal<boolean>(true);
     const [resizeEnabled, setResizeEnabled] = createSignal<boolean>(true);
-    const [position, setPosition] = createSignal<Position>({x:0,y:0});
-    const [state, setState] = createSignal<State>(DefaultState);
+    const [position, setPosition] = createSignal<Position>();
+    const [state, setState] = createSignal<State>(defaultState);
     const [handleEnabled, setHandleEnabled] = createSignal<boolean>(false);
 
     return (
