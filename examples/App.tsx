@@ -61,7 +61,7 @@ const App: Component = () => {
                 maxSize={{width: 500, height: 500}}
                 position={position()}
                 state={state()}
-                boundary={/*boundaries() ? "window" : "parent"*/{top: 20, left: 20, right: 20, bottom: 20}}
+                boundary={boundaries() ? "window" : "parent"/*{top: 20, left: 20, right: 20, bottom: 20}*/}
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"

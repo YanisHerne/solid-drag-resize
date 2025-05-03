@@ -26,6 +26,11 @@ export type Position = {
     y: number;
 }
 
+const zeroPosition = {
+    x: 0,
+    y: 0,
+};
+
 export type Bounds = {
     top: number;
     right: number;
@@ -93,7 +98,7 @@ export interface Props {
     /**
      * A forwarded ref to access to the main element of the component.
      */
-    ref?: HTMLElement;
+    ref?: HTMLDivElement;
     /**
      * Not implemented
      */
@@ -165,6 +170,12 @@ export interface Props {
      * size will still be obeyed.
      */
     ensureInsideBoundary?: boolean;
+    /**
+     * A function to call that will recalculate the current boundaries and
+     * mutate the current state to stay within those boundaries while
+     * obeying any size restrictions.
+     */
+    ensureInsideFunc?: Function;
     /**
     * A class that will be added to the component whenever it is being actively
     * dragged. Essentially a shortcut to manually doing it with dragStart,
@@ -238,7 +249,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     });
     createEffect(() => { if (props.position) setState(props.position); });
     createEffect(() => { if (props.state) setState(props.state); });
-    createEffect(() => { if (props.ref) props.ref = mainElement; });
+    createEffect(() => { props.ref = mainElement; });
 
     const observer = new ResizeObserver(() => {
         const boundary = calculateBounds()
@@ -297,13 +308,30 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const [dragging, setDragging] = createSignal<boolean>(false);
     const [resizing, setResizing] = createSignal<boolean>(false);
 
-    const [action, setAction] = createStore<Action>(defaultAction);
+    let action: Action = defaultAction;
     // What is the original position of the element prior to transformation,
     // that the transformation is being applied to?
-    let origin: Position;
+    let origin: Position = zeroPosition;
     // Where, relative to the element, is the cursor? (To prevent jumping
     // to the cursor when an action begins
-    let offset: Position;
+    let offset: Position = zeroPosition;
+
+    const amendAction = (proposed: State): State => {
+        const amended = proposed;
+        amended.x = clamp(
+            proposed.x,
+            bounds.left,
+            window.innerWidth - state.width - bounds.right,
+        );
+        amended.y = clamp(
+            proposed.y,
+            bounds.top,
+            window.innerHeight - state.height - bounds.bottom,
+        );
+        console.log("proposed " + JSON.stringify(proposed));
+        console.log("amended " + JSON.stringify(amended));
+        return amended;
+    }
 
     const onDragMove = (e: MouseEvent) => {
         if (resizing()) {
@@ -312,17 +340,14 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         }
         if (props.drag) props.drag(e, offset, state);
         mainElement!.style.cursor = "grabbing";
-        const dragX = clamp(
-            e.clientX - offset.x,
-            bounds.left,
-            window.innerWidth - state.width - bounds.right,
-        );
-        const dragY = clamp(
-            e.clientY - offset.y,
-            bounds.top,
-            window.innerHeight - state.height - bounds.bottom,
-        );
-        setState({x: dragX - origin.x, y: dragY - origin.y});
+        action.proposed = {
+            x: e.clientX - offset.x,
+            y: e.clientY - offset.y,
+            height: state.height,
+            width: state.width,
+        };
+        action.amended = amendAction(action.proposed);
+        setState({x: action.amended.x - origin.x, y: action.amended.y - origin.y});
     }
     const onDragEnd = (e: MouseEvent | undefined = undefined) => {
         // The undefined `e` since this is sometimes a standalone function
@@ -346,22 +371,21 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         mainElement.style.cursor = "grabbing";
         setDragging(true);
         console.log(calculateBounds());
-        offset = {
-            x: e.clientX - mainElement.getBoundingClientRect().left,
-            y: e.clientY - mainElement.getBoundingClientRect().top
-        };
+        const rect = mainElement.getBoundingClientRect();
         origin = {
-            x: mainElement.getBoundingClientRect().left - state.x,
-            y: mainElement.getBoundingClientRect().top - state.y,
+            x: rect.left - state.x,
+            y: rect.top - state.y,
         };
-        setAction({
-            init: {
-                x: state.x,
-                y: state.y,
-                height: state.height,
-                width: state.width
-            },
-        });
+        offset = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+        action.init =  {
+            x: state.x,
+            y: state.y,
+            height: state.height,
+            width: state.width
+        };
         document.addEventListener("mousemove", onDragMove);
         document.addEventListener("mouseup", onDragEnd);
     }
@@ -453,56 +477,47 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const onResizeStart: ResizeCallback = (e, dir) => {
         if (!props.enabled || props.resizeEnabled === false) return;
         if (props.resizeAxes && props.resizeAxes[dir] === false) return;
+        if (!mainElement) return;
         if (props.resizeStart) props.resizeStart(e);
         if (props.disableUserSelect) setUserSelect(false);
         setResizing(true);
         direction = dir;
         calculateBounds();
+        const rect = mainElement.getBoundingClientRect();
         origin = {
-            x: mainElement!.getBoundingClientRect().left - state.x,
-            y: mainElement!.getBoundingClientRect().top - state.y,
+            x: rect.left - state.x,
+            y: rect.top - state.y,
         };
         offset = {
             x: e.clientX,
             y: e.clientY,
         }
-        setAction({
-            init: {
-                y: state.y,
-                x: state.x,
-                height: state.height,
-                width: state.width,
-            }
-        });
+        action.init = {
+            y: state.y,
+            x: state.x,
+            height: state.height,
+            width: state.width,
+        };
         document.addEventListener("mousemove", onResizeMove);
         document.addEventListener("mouseup", onResizeEnd);
     };
 
     const ensureInside = (boundary: Bounds) => {
         if (!mainElement) return
-        const rect = mainElement.getBoundingClientRect();
-        const newState = {
-            y: clamp(
-                rect.y,
-                boundary.top,
-                Math.max(0, window.innerHeight - rect.height - boundary.bottom),
-            ),
-            x: clamp(
-                rect.x,
-                boundary.left,
-                Math.max(0, window.innerWidth - rect.width - boundary.right),
-            ),
-            height: Math.max(
-                Math.min(rect.height, window.innerHeight - boundary.top - boundary.bottom),
-                props.minSize.height,
-            ),
-            width: Math.max(
-                Math.min(rect.width, window.innerWidth - boundary.left - boundary.right),
-                props.minSize.width,
-            ),
+        action.proposed = {
+            x: state.x + origin.x,
+            y: state.y + origin.y,
+            height: state.height,
+            width: state.width,
         };
-        setState(newState);
+        action.amended = amendAction(action.proposed);
+        action.amended.x -= origin.x;
+        action.amended.y -= origin.y;
+        setState(action.amended);
     }
+    createEffect(() => {
+        if (props.ensureInsideFunc) props.ensureInsideFunc = ensureInside
+    });
     const ensureInsideWindow = () => ensureInside(calculateBounds());
     window.addEventListener("resize", ensureInsideWindow);
 
@@ -529,7 +544,10 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             el.addEventListener("mousedown", onDragStart);
         });
     }
-    createEffect(() => manageDragHandle());
+    createEffect(() => {
+        props.dragHandle;
+        setTimeout(() => manageDragHandle(), 0)
+    });
 
     onCleanup(() => {
         window.removeEventListener("resize", ensureInsideWindow);
@@ -541,7 +559,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     return (
         <div
             {...props}
-            ref={mainElement!}
+            ref={mainElement}
             style={Object.assign({
                 transform: "translate(" + state.x + "px," + state.y + "px)",
                 height: state.height + "px",
