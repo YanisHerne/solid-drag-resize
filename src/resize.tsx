@@ -97,10 +97,11 @@ export type ResizeCallback = (
 interface ResizeProps {
     direction: Direction,
     resizeCallback: ResizeCallback,
+    enabled: boolean,
+    resizeEnabled?: boolean,
 }
 
-export const ResizeHandle: ParentComponent<ResizeProps> = (unmergedProps) => {
-    const props = mergeProps({enabled: true}, unmergedProps);
+export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
     const onResize: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
         props.resizeCallback(event, props.direction)
     }
