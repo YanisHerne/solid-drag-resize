@@ -69,12 +69,12 @@ const App: Component = () => {
                 dragEnabled={dragEnabled()}
                 resizeEnabled={resizeEnabled()}
                 disableUserSelect={userSelect()}
-                initialPosition={{x: 10, y: 10}}
-                initialSize={{width: 150, height: 150}}
+                initialState={{x: 10, y: 10, width: 150, height: 150}}
+                minSize={{width: 80, height: 80}}
                 maxSize={{width: 500, height: 500}}
                 position={position()}
                 state={state()}
-                boundary={boundaries() ? "window" : "parent"/*{top: 20, left: 20, right: 20, bottom: 20}*/}
+                boundary={boundaries() ? "window" : undefined /*"parent"/*{top: 20, left: 20, right: 20, bottom: 20}*/}
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"
@@ -102,6 +102,10 @@ const App: Component = () => {
                     console.log("Resize ended parameters:");
                     console.log({ event: e, direction: dir, action: action });
                 }}
+                id="DragAndResize"
+                resizeHandleProps={{all: {
+                    className: "thing"
+                }}}
             >
                 <div class={styles.DragHandle} classList={{"handle": true}} />
             </DragAndResize>
