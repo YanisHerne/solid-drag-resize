@@ -100,9 +100,10 @@ export interface Props {
      */
     ref?: HTMLDivElement;
     /**
-     * Not implemented
+     * If you set this prop, only those directions which are set to true will
+     * have their resize handles instantiated.
      */
-    resizeAxes?: {[key in Direction]: boolean};
+    resizeAxes?: {[key in Direction]?: boolean};
     /**
      * The size the component starts at before any events fire.
      */
@@ -558,6 +559,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             }, props.classList)}>
             <For each={directions}>
                 {(direction) => {
+                    if (props.resizeAxes && props.resizeAxes[direction] === false)
+                        return;
                     return (
                         <ResizeHandle
                             direction={direction}
