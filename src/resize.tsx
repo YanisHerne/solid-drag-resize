@@ -1,4 +1,4 @@
-import { mergeProps, ParentComponent, JSX } from "solid-js";
+import { createSignal, createMemo, ParentComponent, JSX } from "solid-js";
 import { DOMElement } from "solid-js/jsx-runtime";
 
 export const directions = [
@@ -43,48 +43,51 @@ const resizeStyles: { [key in Direction]: JSX.CSSProperties } = {
     top: {
         ...rowStyles,
         top: "-7.5px",
-        cursor: "n-resize"
     },
     right: {
         ...colStyles,
         right: "-7.5px",
-        cursor: "e-resize"
     },
     bottom: {
         ...rowStyles,
         bottom: "-7.5px",
-        cursor: "s-resize"
     },
     left: {
         ...colStyles,
         left: "-7.5px",
-        cursor: "w-resize"
     },
     topRight: {
         ...cornerStyles,
         top: "-12.5px",
         right: "-12.5px",
-        cursor: "ne-resize"
     },
     bottomRight: {
         ...cornerStyles,
         right: "-12.5px",
         bottom: "-12.5px",
-        cursor: "se-resize"
     },
     bottomLeft: {
         ...cornerStyles,
         bottom: "-12.5px",
         left: "-12.5px",
-        cursor: "sw-resize"
     },
     topLeft : {
         ...cornerStyles,
         top: "-12.5px",
         left: "-12.5px",
-        cursor: "nw-resize"
     },
 } as const
+
+const cursorStyles = {
+    top: "n-resize",
+    right: "e-resize",
+    bottom: "s-resize",
+    left: "w-resize",
+    topRight: "ne-resize",
+    bottomRight: "se-resize",
+    bottomLeft: "sw-resize",
+    topLeft: "nw-resize",
+} as const;
 
 export type ResizeCallback = (
     e: MouseEvent & {
@@ -106,11 +109,27 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
         props.resizeCallback(event, props.direction)
     }
 
+    // Band-aid solution for cursor changes
+    const [enabled, setEnabled] = createSignal<boolean>(true);
+    createMemo(() => {
+        if (!props.enabled || props.resizeEnabled === false) {
+            setEnabled(false);
+        } else {
+            setEnabled(true);
+        }
+    });
+
     return (
         <div
-            style = { resizeStyles[props.direction] }
+            style={Object.assign(
+                resizeStyles[props.direction],
+                {
+                    cursor: enabled() ? cursorStyles[props.direction] : "unset",
+                },
+            )}
             on:mousedown = { onResize }
-            {...props}>
+            {...props}
+        >
             {props.children}
         </div>
     )

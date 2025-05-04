@@ -10,9 +10,17 @@ body {
 html, body, #root {
     height: 100%;
     width: 100%;
-    overflow: hidden;
+    overflow: scroll;
 }
 
 code {
     font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+
+.draggable {
+    cursor: grab;
+}
+
+.currentlyDragging {
+    cursor: grabbing;
+};

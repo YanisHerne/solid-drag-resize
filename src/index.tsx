@@ -171,12 +171,6 @@ export interface Props {
      */
     ensureInsideBoundary?: boolean;
     /**
-     * A function to call that will recalculate the current boundaries and
-     * mutate the current state to stay within those boundaries while
-     * obeying any size restrictions.
-     */
-    ensureInsideFunc?: Function;
-    /**
     * A class that will be added to the component whenever it is being actively
     * dragged. Essentially a shortcut to manually doing it with dragStart,
     * resizeStart, dragEnd, and resizeEnd.
@@ -259,7 +253,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     let nowObserving: HTMLElement;
     let bounds: Bounds;
     const calculateBounds = () => {
-        let bounds: Bounds;
         if (props.boundary === "parent") {
             const element = mainElement!.parentElement!;
             const rect = element.getBoundingClientRect();
@@ -298,7 +291,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             observer.disconnect();
             bounds = defaultBounds;
         }
-        console.log(bounds);
+        ensureInside(bounds);
         return bounds;
     }
     createEffect(() => bounds = calculateBounds());
@@ -328,8 +321,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             bounds.top,
             window.innerHeight - state.height - bounds.bottom,
         );
-        console.log("proposed " + JSON.stringify(proposed));
-        console.log("amended " + JSON.stringify(amended));
         return amended;
     }
 
@@ -339,7 +330,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             return;
         }
         if (props.drag) props.drag(e, offset, state);
-        mainElement!.style.cursor = "grabbing";
+        calculateBounds(); // Needs to be refreshed
         action.proposed = {
             x: e.clientX - offset.x,
             y: e.clientY - offset.y,
@@ -354,7 +345,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         if (props.dragEnd && e)
             props.dragEnd(e, offset, state);
         setDragging(false);
-        mainElement!.style.cursor = "grab";
         document.removeEventListener("mousemove", onDragMove);
         document.removeEventListener("mouseup", onDragEnd);
         if (props.disableUserSelect) setUserSelect(true);
@@ -368,9 +358,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         }
         if (props.dragStart) props.dragStart(e);
         if (props.disableUserSelect) setUserSelect(false);
-        mainElement.style.cursor = "grabbing";
         setDragging(true);
-        console.log(calculateBounds());
         const rect = mainElement.getBoundingClientRect();
         origin = {
             x: rect.left - state.x,
@@ -475,9 +463,9 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.removeEventListener("mouseup", onResizeEnd);
     };
     const onResizeStart: ResizeCallback = (e, dir) => {
+        if (!mainElement) return;
         if (!props.enabled || props.resizeEnabled === false) return;
         if (props.resizeAxes && props.resizeAxes[dir] === false) return;
-        if (!mainElement) return;
         if (props.resizeStart) props.resizeStart(e);
         if (props.disableUserSelect) setUserSelect(false);
         setResizing(true);
@@ -515,11 +503,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         action.amended.y -= origin.y;
         setState(action.amended);
     }
-    createEffect(() => {
-        if (props.ensureInsideFunc) props.ensureInsideFunc = ensureInside
-    });
     const ensureInsideWindow = () => ensureInside(calculateBounds());
-    window.addEventListener("resize", ensureInsideWindow);
+    window.addEventListener("resize", ensureInsideWindow); // Named so can be detached
 
     const handles: HTMLElement[] = [];
     const manageDragHandle = () => {

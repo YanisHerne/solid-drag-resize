@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { createSignal } from "solid-js"
+import { createSignal, createMemo } from "solid-js"
 import logo from "./logo.svg";
 import styles from "./App.module.css";
 import { DragAndResize, Position, State, defaultState } from "src";
@@ -14,6 +14,15 @@ const App: Component = () => {
     const [handleEnabled, setHandleEnabled] = createSignal<boolean>(false);
     let reference: HTMLElement | undefined = undefined;
     const [boundaries, setBoundaries] = createSignal<boolean>(true);
+    const [userSelect, setUserSelect] = createSignal<boolean>(true);
+    const [className, setClassName] = createSignal<""|"draggable">("draggable");
+    createMemo(() => {
+        if (handleEnabled()) {
+            setClassName("");
+        } else {
+            setClassName("draggable");
+        }
+    });
 
     return (
         <div class={styles.App}>
@@ -47,15 +56,19 @@ const App: Component = () => {
                 Click to console log element ref
             </button>
             <button onclick={() => setBoundaries(!boundaries())}>
-                Click to change toggle parent/window boundaries
+                Click to toggle parent/window boundaries
+            </button>
+            <button onclick={() => setUserSelect(!userSelect())}>
+                Click to {userSelect() ? "disable" : "enable"} user select: none when moving
             </button>
             <DragAndResize
-                class={styles.DragAndResize}
+                class={styles.DragAndResize + " " + className()}
                 style={{ "border-radius": "0.5rem" }}
                 ref={reference}
                 enabled={enabled()}
                 dragEnabled={dragEnabled()}
                 resizeEnabled={resizeEnabled()}
+                disableUserSelect={userSelect()}
                 initialPosition={{x: 10, y: 10}}
                 initialSize={{width: 150, height: 150}}
                 maxSize={{width: 500, height: 500}}

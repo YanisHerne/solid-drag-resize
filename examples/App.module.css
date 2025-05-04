@@ -1,7 +1,7 @@
 .App {
     height: 400px;
     width: 800px;
-    margin: 40px 80px;
+    margin: 400px 80px;
     background: grey;
 }
 
@@ -16,4 +16,5 @@
     width: 40px;
     margin: auto;
     background: lightgrey;
+    cursor: grab;
 }
