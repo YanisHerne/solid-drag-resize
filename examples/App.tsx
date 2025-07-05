@@ -1,6 +1,5 @@
 import type { Component } from "solid-js";
 import { createSignal, createMemo } from "solid-js"
-import logo from "./logo.svg";
 import styles from "./App.module.css";
 import { DragAndResize, Position, State, defaultState } from "src";
 
@@ -74,7 +73,7 @@ const App: Component = () => {
                 maxSize={{width: 500, height: 500}}
                 position={position()}
                 state={state()}
-                boundary={boundaries() ? "window" : undefined /*"parent"/*{top: 20, left: 20, right: 20, bottom: 20}*/}
+                boundary={boundaries() ? "window" : "parent"/*{top: 20, left: 20, right: 20, bottom: 20}*/}
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"
@@ -89,6 +88,12 @@ const App: Component = () => {
                 dragEnd={(e, offset, state) => {
                     console.log("Drag ended parameters")
                     console.log({ event: e, offset: offset, state: state });
+                    /*return {
+                        x: 0,
+                        y: 0,
+                        height: 200,
+                        width: 200,
+                    };*/
                 }}
                 resizeStart={(e) => {
                     console.log("Resize started parameters:")

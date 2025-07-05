@@ -11,7 +11,7 @@ describe('environment', () => {
 
 describe('component', () => {
     it('runs on server', () => {
-        const string= renderToString(() => <DragAndResize />)
-        expect(string).toBe('duv')
+        const string = renderToString(() => <DragAndResize />)
+        expect(string).toBe('')
     })
 })

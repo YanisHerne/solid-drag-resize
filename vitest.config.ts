@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import solidPlugin from 'vite-plugin-solid'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode }: any) => {
   // to test in server environment, run with "--mode ssr" or "--mode test:ssr" flag
   // loads only server.test.ts file
   const testSSR = mode === 'test:ssr' || mode === 'ssr'
