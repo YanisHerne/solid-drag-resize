@@ -12,20 +12,26 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+            run_install: false
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Install playwright browsers
+        run: pnpm playwright install --with-deps
 
       - name: Build
         run: pnpm run build

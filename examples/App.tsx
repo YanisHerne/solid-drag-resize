@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { createSignal, createMemo } from "solid-js"
+import { createSignal, createMemo } from "solid-js";
 import styles from "./App.module.css";
 import { DragAndResize, Position, State, defaultState } from "src";
 
@@ -14,7 +14,7 @@ const App: Component = () => {
     let reference: HTMLElement | undefined = undefined;
     const [boundaries, setBoundaries] = createSignal<boolean>(true);
     const [userSelect, setUserSelect] = createSignal<boolean>(true);
-    const [className, setClassName] = createSignal<""|"draggable">("draggable");
+    const [className, setClassName] = createSignal<"" | "draggable">("draggable");
     createMemo(() => {
         if (handleEnabled()) {
             setClassName("");
@@ -34,26 +34,32 @@ const App: Component = () => {
             <button onclick={() => setResizeEnabled(!resizeEnabled())}>
                 Click to {resizeEnabled() ? "disable" : "enable"} resize
             </button>
-            <button onclick={() => setPosition({
-                x: 150,
-                y: 200,
-            })}>
+            <button
+                onclick={() =>
+                    setPosition({
+                        x: 150,
+                        y: 200,
+                    })
+                }
+            >
                 Click to jump to (150, 200)
             </button>
-            <button onclick={() => setState({
-                x: 100,
-                y: 100,
-                width: 100,
-                height: 100,
-            })}>
+            <button
+                onclick={() =>
+                    setState({
+                        x: 100,
+                        y: 100,
+                        width: 100,
+                        height: 100,
+                    })
+                }
+            >
                 Click to jump to (100, 100) with size (100, 100)
             </button>
             <button onclick={() => setHandleEnabled(!handleEnabled())}>
                 Click to {handleEnabled() ? "disable" : "enable"} the drag handle
             </button>
-            <button onclick={() => console.log(reference)}>
-                Click to console log element ref
-            </button>
+            <button onclick={() => console.log(reference)}>Click to console log element ref</button>
             <button onclick={() => setBoundaries(!boundaries())}>
                 Click to toggle parent/window boundaries
             </button>
@@ -68,12 +74,16 @@ const App: Component = () => {
                 dragEnabled={dragEnabled()}
                 resizeEnabled={resizeEnabled()}
                 disableUserSelect={userSelect()}
-                initialState={{x: 10, y: 10, width: 150, height: 150}}
-                minSize={{width: 80, height: 80}}
-                maxSize={{width: 500, height: 500}}
+                initialState={{ x: 10, y: 10, width: 150, height: 150 }}
+                minSize={{ width: 80, height: 80 }}
+                maxSize={{ width: 500, height: 500 }}
                 position={position()}
                 state={state()}
-                boundary={boundaries() ? "window" : "parent"/*{top: 20, left: 20, right: 20, bottom: 20}*/}
+                boundary={
+                    boundaries()
+                        ? "window"
+                        : "parent" /*{top: 20, left: 20, right: 20, bottom: 20}*/
+                }
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"
@@ -86,7 +96,7 @@ const App: Component = () => {
                     console.log({ event: e, offset: offset, state: state });
                 }}
                 dragEnd={(e, offset, state) => {
-                    console.log("Drag ended parameters")
+                    console.log("Drag ended parameters");
                     console.log({ event: e, offset: offset, state: state });
                     /*return {
                         x: 0,
@@ -96,7 +106,7 @@ const App: Component = () => {
                     };*/
                 }}
                 resizeStart={(e) => {
-                    console.log("Resize started parameters:")
+                    console.log("Resize started parameters:");
                     console.log({ event: e });
                 }}
                 resize={(e, dir, action) => {
@@ -108,11 +118,13 @@ const App: Component = () => {
                     console.log({ event: e, direction: dir, action: action });
                 }}
                 id="DragAndResize"
-                resizeHandleProps={{all: {
-                    className: "thing"
-                }}}
+                resizeHandleProps={{
+                    all: {
+                        className: "thing",
+                    },
+                }}
             >
-                <div class={styles.DragHandle} classList={{"handle": true}} />
+                <div class={styles.DragHandle} classList={{ handle: true }} />
             </DragAndResize>
         </div>
     );

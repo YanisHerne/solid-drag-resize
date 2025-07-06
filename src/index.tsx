@@ -10,22 +10,17 @@ import {
     JSX,
 } from "solid-js";
 import { isServer } from "solid-js/web";
-import { createStore} from "solid-js/store"
-import {
-    directions,
-    Direction,
-    ResizeCallback,
-    ResizeHandle,
-} from "./resize";
+import { createStore } from "solid-js/store";
+import { directions, Direction, ResizeCallback, ResizeHandle } from "./resize";
 
-const clamp = (num: number, min: number, max:number) => {
+const clamp = (num: number, min: number, max: number) => {
     return Math.min(Math.max(num, min), max);
-}
+};
 
 export type Position = {
     x: number;
     y: number;
-}
+};
 
 const zeroPosition = {
     x: 0,
@@ -42,7 +37,7 @@ export type Bounds = {
 type Size = {
     height: number;
     width: number;
-}
+};
 
 export type State = Position & Size;
 
@@ -59,14 +54,14 @@ const isState = (obj: unknown): obj is State => {
         typeof obj.width === "number" &&
         typeof obj.height === "number"
     );
-}
+};
 
 export const defaultState: State = {
     x: 0,
     y: 0,
     height: 100,
     width: 100,
-}
+};
 
 /**
  * An action consists of the initial state, generated when the action begins,
@@ -85,7 +80,7 @@ const defaultAction: Action = {
     init: defaultState,
     proposed: defaultState,
     amended: defaultState,
-}
+};
 
 export interface Props {
     /**
@@ -95,17 +90,17 @@ export interface Props {
      * Inputting an object with the keys `drag`, `resize`, or both, with
      * boolean values, can separate control of dragging and resizing.
      */
-    enabled?: boolean
+    enabled?: boolean;
     /**
      * To enable or disable the dragging functionality without
      * changing the resizing functionality.
      */
-    dragEnabled?: boolean
+    dragEnabled?: boolean;
     /**
      * To enable or disable the resizing functionality without
      * changing the dragging functionality.
      */
-    resizeEnabled?: boolean
+    resizeEnabled?: boolean;
     /**
      * A forwarded ref to access to the main element of the component.
      */
@@ -114,7 +109,7 @@ export interface Props {
      * If you set this prop, only those directions which are set to true will
      * have their resize handles instantiated.
      */
-    resizeAxes?: {[key in Direction]?: boolean};
+    resizeAxes?: { [key in Direction]?: boolean };
     /**
      * The size the component starts at before any events fire.
      */
@@ -144,14 +139,16 @@ export interface Props {
      * of `.handle`, while handles with instead an id of "handle" would
      * have querySelectors of `#handle`.
      */
-    dragHandle?: HTMLElement | string | (HTMLElement|string)[];
+    dragHandle?: HTMLElement | string | (HTMLElement | string)[];
     /**
      * Props to be passed to the eight resize handles. May include children.
      */
-    resizeHandleProps?: {
-        all: { [other: string]: unknown; }
-    } | {[key in Direction]: ParentProps & Props};
-    customResizeHandle?: Partial<{[key in Direction]: Element}>
+    resizeHandleProps?:
+        | {
+              all: { [other: string]: unknown };
+          }
+        | { [key in Direction]: ParentProps & Props };
+    customResizeHandle?: Partial<{ [key in Direction]: Element }>;
     /**
      * When set to `true`, the "user-select" and "-webkit-user-select"
      * properties are set to "none" while dragging or resizing
@@ -159,55 +156,55 @@ export interface Props {
      */
     disableUserSelect?: boolean;
     /**
-    * If set, specifies the boundaries beyond which the element may not be
-    * dragged or resized. Bounds are understood as the "top", "right", "bottom",
-    * and "left" attributes of an absolutely positioned item with respect to
-    * the window. Setting this to "window" will make the window the boundary,
-    * setting this to "parent" will use the bounds of the immediate parent of
-    * this element as a boundary. You can also input a custom ref to an
-    * HTMLElement, specify custom bounds, or specify a function that returns
-    * custom bounds.
-    */
+     * If set, specifies the boundaries beyond which the element may not be
+     * dragged or resized. Bounds are understood as the "top", "right", "bottom",
+     * and "left" attributes of an absolutely positioned item with respect to
+     * the window. Setting this to "window" will make the window the boundary,
+     * setting this to "parent" will use the bounds of the immediate parent of
+     * this element as a boundary. You can also input a custom ref to an
+     * HTMLElement, specify custom bounds, or specify a function that returns
+     * custom bounds.
+     */
     boundary?: "window" | "parent" | HTMLElement | Bounds | (() => Bounds) | undefined;
     /**
-    * A class that will be added to the component whenever it is being actively
-    * dragged. Essentially a shortcut to manually doing it with dragStart,
-    * resizeStart, dragEnd, and resizeEnd.
-    */
+     * A class that will be added to the component whenever it is being actively
+     * dragged. Essentially a shortcut to manually doing it with dragStart,
+     * resizeStart, dragEnd, and resizeEnd.
+     */
     classWhileDragging?: string;
     /**
-    * A class that will be added to the component whenever it is being actively
-    * resized. Essentially a shortcut to manually doing it with dragStart,
-    * resizeStart, dragEnd, and resizeEnd.
-    */
+     * A class that will be added to the component whenever it is being actively
+     * resized. Essentially a shortcut to manually doing it with dragStart,
+     * resizeStart, dragEnd, and resizeEnd.
+     */
     classWhileResizing?: string;
     /**
-    * A callback that fires whenever a drag motion has begun
-    */
+     * A callback that fires whenever a drag motion has begun
+     */
     dragStart?: (e: MouseEvent) => void | State;
     /**
-    * A callback that fires continuously on each mouse
-    * movement during a drag motion.
-    */
+     * A callback that fires continuously on each mouse
+     * movement during a drag motion.
+     */
     drag?: (e: MouseEvent, offset: Position, state: State) => void | State;
     /**
-    * A callback fires that when the drag movement is done because
-    * the mouse has been lifted up
-    */
+     * A callback fires that when the drag movement is done because
+     * the mouse has been lifted up
+     */
     dragEnd?: (e: MouseEvent, offset: Position, state: State) => void | State;
     /**
-    * A callback that fires whenever a resize motion has begun
-    */
+     * A callback that fires whenever a resize motion has begun
+     */
     resizeStart?: (e: MouseEvent) => void | State;
     /**
-    * A callback that fires continuously on each mouse
-    * movement during a resize motion.
-    */
+     * A callback that fires continuously on each mouse
+     * movement during a resize motion.
+     */
     resize?: (e: MouseEvent, direction: Direction, action: Action) => void | State;
     /**
-    * A callback fires that when the resize movement is done because
-    * the mouse has been lifted up
-    */
+     * A callback fires that when the resize movement is done because
+     * the mouse has been lifted up
+     */
     resizeEnd?: (e: MouseEvent, direction: Direction, action: Action) => void | State;
     onEnsureInside?: (action: Action, bounds: Bounds, origin: Position) => void | State;
     [other: string]: unknown;
@@ -216,7 +213,7 @@ export interface Props {
 export const defaultProps = {
     enabled: true,
     disableUserSelect: true,
-}
+};
 
 export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const props = mergeProps(defaultProps, unmergedProps);
@@ -233,16 +230,22 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             setState(initialState);
         }
     });
-    createEffect(() => { if (props.position) setState(props.position); });
-    createEffect(() => { if (props.state) setState(props.state); });
-    createEffect(() => { props.ref = mainElement; });
+    createEffect(() => {
+        if (props.position) setState(props.position);
+    });
+    createEffect(() => {
+        if (props.state) setState(props.state);
+    });
+    createEffect(() => {
+        props.ref = mainElement;
+    });
 
     // The boundary is recalculated and obeyed with this observer
     let observer: ResizeObserver;
     onMount(() => {
         // ResizeObserver cannot be SSR-ed since it is a browser only API
         observer = new ResizeObserver(() => {
-            const boundary = calculateBounds()
+            const boundary = calculateBounds();
             bounds = boundary;
             ensureInside(boundary);
         });
@@ -291,15 +294,15 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         } else if (typeof props.boundary === "object") {
             observer.disconnect();
             bounds = props.boundary;
-        }
-        else { // Default to no bounds
+        } else {
+            // Default to no bounds
             observer.disconnect();
             bounds = undefined;
         }
         ensureInside(bounds);
         return bounds;
-    }
-    createEffect(() => bounds = calculateBounds());
+    };
+    createEffect(() => (bounds = calculateBounds()));
 
     // These are signals & not vars so they can be reactive for JSX
     const [userSelect, setUserSelect] = createSignal<boolean>(true);
@@ -314,27 +317,23 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     // to the cursor when an action begins
     let offset: Position = zeroPosition;
 
-    const amendDrag = (proposed: State, bounds: Bounds|undefined): State => {
+    const amendDrag = (proposed: State, bounds: Bounds | undefined): State => {
         if (!bounds) return proposed; // Return with no amendments
         let amended: State = defaultState;
-        amended.x = clamp(
-            proposed.x,
-            bounds.left,
-            window.innerWidth - state.width - bounds.right,
-        );
+        amended.x = clamp(proposed.x, bounds.left, window.innerWidth - state.width - bounds.right);
         amended.y = clamp(
-           proposed.y,
+            proposed.y,
             bounds.top,
             window.innerHeight - state.height - bounds.bottom,
         );
         return amended;
-    }
+    };
     const onDragMove = (e: PointerEvent) => {
         if (resizing()) {
-            onDragEnd() // When resizing, don't drag
+            onDragEnd(); // When resizing, don't drag
             return;
         }
-        calculateBounds()
+        calculateBounds();
         action.proposed = {
             x: e.clientX - offset.x,
             y: e.clientY - offset.y,
@@ -344,11 +343,10 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         action.amended = amendDrag(action.proposed, bounds);
         if (props.drag) {
             const result = props.drag(e, offset, state);
-            console.log("RESULT: " + JSON.stringify(result));
             if (isState(result)) setState(result);
         }
-        setState({x: action.amended.x - origin.x, y: action.amended.y - origin.y});
-    }
+        setState({ x: action.amended.x - origin.x, y: action.amended.y - origin.y });
+    };
     const onDragEnd = (e: MouseEvent | undefined = undefined) => {
         // The undefined `e` since this is sometimes a standalone function
         setDragging(false);
@@ -360,9 +358,9 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             const result = props.dragEnd(e, offset, state);
             if (isState(result)) setState(result);
         }
-    }
+    };
     const onDragStart = (e: PointerEvent) => {
-        if (e.button > 1) return
+        if (e.button > 1) return;
         if (!mainElement) return;
         if (!props.enabled || props.dragEnabled === false) return;
         if (resizing()) {
@@ -378,13 +376,13 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         };
         offset = {
             x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            y: e.clientY - rect.top,
         };
-        action.init =  {
+        action.init = {
             x: state.x,
             y: state.y,
             height: state.height,
-            width: state.width
+            width: state.width,
         };
         document.addEventListener("pointermove", onDragMove);
         document.addEventListener("pointerup", onDragEnd);
@@ -393,24 +391,25 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             const result = props.dragStart(e);
             if (isState(result)) setState(result);
         }
-    }
+    };
 
     let direction: Direction;
     const onResizeMove = (e: PointerEvent) => {
-        if (!bounds) bounds = {
-            top: -Infinity,
-            right: -Infinity,
-            bottom: -Infinity,
-            left: -Infinity
-        };
+        if (!bounds)
+            bounds = {
+                top: -Infinity,
+                right: -Infinity,
+                bottom: -Infinity,
+                left: -Infinity,
+            };
         const deltaY = e.clientY - offset.y;
         const deltaX = e.clientX - offset.x;
-        let maxSize: Size = {height: Infinity, width: Infinity};
+        let maxSize: Size = { height: Infinity, width: Infinity };
         if (props.maxSize) {
             if (props.maxSize.height) maxSize.height = props.maxSize.height;
             if (props.maxSize.width) maxSize.width = props.maxSize.width;
         }
-        let minSize: Size = {height: 0, width: 0};
+        let minSize: Size = { height: 0, width: 0 };
         if (props.minSize) {
             if (props.minSize.height) minSize.height = props.minSize.height;
             if (props.minSize.width) minSize.width = props.minSize.width;
@@ -432,7 +431,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                     action.init.y + action.init.height - bounds.top + origin.y,
                 ),
             ),
-        }
+        };
         const right = {
             x: action.init.x,
             width: clamp(
@@ -443,7 +442,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                     maxSize.width,
                 ),
             ),
-        }
+        };
         const bottom = {
             y: action.init.y,
             height: clamp(
@@ -458,40 +457,32 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         const left = {
             x: clamp(
                 deltaX + action.init.x,
-                Math.max(
-                    bounds.left - origin.x,
-                    action.init.x + action.init.width - maxSize.width,
-                ),
+                Math.max(bounds.left - origin.x, action.init.x + action.init.width - maxSize.width),
                 action.init.x + action.init.width - minSize.width,
             ),
             width: clamp(
                 action.init.width - deltaX,
                 minSize.width,
-                Math.min(
-                    maxSize.width,
-                    action.init.x + action.init.width - bounds.left + origin.x,
-                ),
+                Math.min(maxSize.width, action.init.x + action.init.width - bounds.left + origin.x),
             ),
-        }
-        if (direction === "top") action.proposed = {...action.init, ...top};
-        if (direction === "right") action.proposed = {...action.init, ...right};
-        if (direction === "bottom") action.proposed = {...action.init, ...bottom};
-        if (direction === "left") action.proposed = {...action.init, ...left};
-        if (direction === "topRight") action.proposed = {...action.init, ...top, ...right};
-        if (direction === "bottomRight") action.proposed = {...action.init, ...right, ...bottom};
-        if (direction === "bottomLeft") action.proposed = {...action.init, ...bottom, ...left};
-        if (direction === "topLeft") action.proposed = {...action.init, ...left, ...top};
-        action.amended = action.proposed
+        };
+        if (direction === "top") action.proposed = { ...action.init, ...top };
+        if (direction === "right") action.proposed = { ...action.init, ...right };
+        if (direction === "bottom") action.proposed = { ...action.init, ...bottom };
+        if (direction === "left") action.proposed = { ...action.init, ...left };
+        if (direction === "topRight") action.proposed = { ...action.init, ...top, ...right };
+        if (direction === "bottomRight") action.proposed = { ...action.init, ...right, ...bottom };
+        if (direction === "bottomLeft") action.proposed = { ...action.init, ...bottom, ...left };
+        if (direction === "topLeft") action.proposed = { ...action.init, ...left, ...top };
+        action.amended = action.proposed;
         if (props.resize) {
             let amended = props.resize(e, direction!, action);
-            if (amended)
-                action.amended = amended;
+            if (amended) action.amended = amended;
         }
-        setState(action.amended)
-    }
+        setState(action.amended);
+    };
     const onResizeEnd = (e: PointerEvent) => {
-        if (props.resizeEnd)
-            props.resizeEnd(e, direction!, action);
+        if (props.resizeEnd) props.resizeEnd(e, direction!, action);
         setResizing(false);
         if (props.disableUserSelect) setUserSelect(true);
         document.removeEventListener("pointermove", onResizeMove);
@@ -499,7 +490,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.removeEventListener("pointercancel", onResizeEnd);
     };
     const onResizeStart: ResizeCallback = (e, dir) => {
-        if (e.button > 1) return
+        if (e.button > 1) return;
         if (!mainElement) return;
         if (!props.enabled || props.resizeEnabled === false) return;
         if (props.resizeAxes && props.resizeAxes[dir] === false) return;
@@ -516,22 +507,22 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         offset = {
             x: e.clientX,
             y: e.clientY,
-        }
+        };
         action.init = {
             y: state.y,
             x: state.x,
             height: state.height,
             width: state.width,
         };
-        action.type = "resize"
+        action.type = "resize";
         document.addEventListener("pointermove", onResizeMove);
         document.addEventListener("pointerup", onResizeEnd);
         document.addEventListener("pointercancel", onResizeEnd);
     };
 
     const ensureInside = (boundary: Bounds | undefined) => {
-        if (!boundary) return
-        if (!mainElement) return
+        if (!boundary) return;
+        if (!mainElement) return;
         action.proposed = {
             x: state.x + origin.x,
             y: state.y + origin.y,
@@ -546,10 +537,10 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             if (result !== undefined && typeof result === "object") action.amended = result;
         }
         setState(action.amended);
-    }
+    };
     const ensureInsideWindow = () => ensureInside(calculateBounds());
     // window object will only be defined on the client side
-    if(!isServer) {
+    if (!isServer) {
         window.addEventListener("resize", ensureInsideWindow); // Named so can be detached
     }
 
@@ -561,28 +552,31 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             handles[0] = mainElement;
         } else if (props.dragHandle instanceof HTMLElement) {
             handles[0] = props.dragHandle;
-        } else if (typeof(props.dragHandle) === "string") {
+        } else if (typeof props.dragHandle === "string") {
             document.querySelectorAll(props.dragHandle).forEach((handle) => {
                 handles.push(handle as HTMLElement);
             });
-        } else if (Array.isArray(props.dragHandle) && props.dragHandle.every((i) => typeof(i) === "string" || i instanceof HTMLElement)) {
+        } else if (
+            Array.isArray(props.dragHandle) &&
+            props.dragHandle.every((i) => typeof i === "string" || i instanceof HTMLElement)
+        ) {
             props.dragHandle.forEach((handle) => {
-                if (typeof(handle) === "string") {
+                if (typeof handle === "string") {
                     document.querySelectorAll(handle).forEach((h) => {
                         handles.push(h as HTMLElement);
                     });
                 } else {
-                    handles.push(handle)
+                    handles.push(handle);
                 }
             });
         }
         handles.forEach((el) => {
             el.addEventListener("pointerdown", onDragStart);
         });
-    }
+    };
     createEffect(() => {
         props.dragHandle;
-        manageDragHandle()
+        manageDragHandle();
     });
 
     onCleanup(() => {
@@ -598,23 +592,30 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         <div
             {...props}
             ref={mainElement}
-            style={Object.assign({
-                //transform: "translate(" + state.x + "px," + state.y + "px)",
-                translate: state.x + "px " + state.y + "px",
-                height: state.height + "px",
-                width: state.width + "px",
-                "user-select": userSelect() ? "auto" : "none",
-                "-webkit-user-select": userSelect() ? "auto" : "none",
-            }, props.style) as JSX.CSSProperties} // Typescript massaging
-            classList={Object.assign({
-                [props.classWhileDragging!]: dragging(),
-                [props.classWhileResizing!]: resizing(),
-            }, props.classList)}
+            style={
+                Object.assign(
+                    {
+                        //transform: "translate(" + state.x + "px," + state.y + "px)",
+                        translate: state.x + "px " + state.y + "px",
+                        height: state.height + "px",
+                        width: state.width + "px",
+                        "user-select": userSelect() ? "auto" : "none",
+                        "-webkit-user-select": userSelect() ? "auto" : "none",
+                    },
+                    props.style,
+                ) as JSX.CSSProperties
+            } // Typescript massaging
+            classList={Object.assign(
+                {
+                    [props.classWhileDragging!]: dragging(),
+                    [props.classWhileResizing!]: resizing(),
+                },
+                props.classList,
+            )}
         >
             <For each={directions}>
                 {(direction) => {
-                    if (props.resizeAxes && props.resizeAxes[direction] === false)
-                        return;
+                    if (props.resizeAxes && props.resizeAxes[direction] === false) return;
                     if (props.resizeHandleProps) {
                         if ("all" in props.resizeHandleProps) {
                             return (
@@ -625,7 +626,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                                     resizeEnabled={props.resizeEnabled}
                                     {...props.resizeHandleProps.all}
                                 />
-                            )
+                            );
                         } else {
                             return (
                                 <ResizeHandle
@@ -635,12 +636,12 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                                     resizeEnabled={props.resizeEnabled}
                                     {...props.resizeHandleProps[direction]}
                                 />
-                            )
+                            );
                         }
                     }
                 }}
             </For>
-            { props.children }
+            {props.children}
         </div>
     );
-}
+};

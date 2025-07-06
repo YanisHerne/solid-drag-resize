@@ -9,10 +9,10 @@ export const directions = [
     "topRight",
     "bottomRight",
     "bottomLeft",
-    "topLeft"
+    "topLeft",
 ] as const;
 
-export type Direction = typeof directions [number];
+export type Direction = (typeof directions)[number];
 
 const rowStyles = {
     position: "absolute",
@@ -71,12 +71,12 @@ const resizeStyles: { [key in Direction]: JSX.CSSProperties } = {
         bottom: "-12.5px",
         left: "-12.5px",
     },
-    topLeft : {
+    topLeft: {
         ...cornerStyles,
         top: "-12.5px",
         left: "-12.5px",
     },
-} as const
+} as const;
 
 const cursorStyles = {
     top: "n-resize",
@@ -94,20 +94,20 @@ export type ResizeCallback = (
         currentTarget: HTMLDivElement;
         target: DOMElement;
     },
-    direction: Direction
+    direction: Direction,
 ) => void;
 
 interface ResizeProps {
-    direction: Direction,
-    resizeCallback: ResizeCallback,
-    enabled: boolean,
-    resizeEnabled?: boolean,
+    direction: Direction;
+    resizeCallback: ResizeCallback;
+    enabled: boolean;
+    resizeEnabled?: boolean;
 }
 
 export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
     const onResize: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
-        props.resizeCallback(event, props.direction)
-    }
+        props.resizeCallback(event, props.direction);
+    };
 
     // Band-aid solution for cursor changes
     const [enabled, setEnabled] = createSignal<boolean>(true);
@@ -121,16 +121,13 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
 
     return (
         <div
-            style={Object.assign(
-                resizeStyles[props.direction],
-                {
-                    cursor: enabled() ? cursorStyles[props.direction] : "unset",
-                },
-            )}
-            on:mousedown = { onResize }
+            style={Object.assign(resizeStyles[props.direction], {
+                cursor: enabled() ? cursorStyles[props.direction] : "unset",
+            })}
+            on:mousedown={onResize}
             {...props}
         >
             {props.children}
         </div>
-    )
-}
+    );
+};
