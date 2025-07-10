@@ -210,6 +210,11 @@ export interface Props {
     [other: string]: unknown;
 }
 
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+export type DragAndResizeProps = Prettify<Props>
+
 export const defaultProps = {
     enabled: true,
     disableUserSelect: true,
@@ -237,7 +242,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         if (props.state) setState(props.state);
     });
     createEffect(() => {
-        props.ref = mainElement;
+        props.ref = mainElement; // eslint-disable-line
     });
 
     // The boundary is recalculated and obeyed with this observer
@@ -262,7 +267,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 bottom: window.innerHeight - rect.bottom,
                 left: rect.left,
             };
-            if (element != nowObserving) {
+            if (element !== nowObserving) {
                 observer.disconnect();
                 observer.observe(element);
             }
@@ -283,7 +288,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 bottom: window.innerHeight - rect.bottom,
                 left: rect.left,
             };
-            if (props.boundary != nowObserving) {
+            if (props.boundary !== nowObserving) {
                 observer.disconnect();
                 observer.observe(props.boundary);
             }
@@ -299,10 +304,12 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             observer.disconnect();
             bounds = undefined;
         }
-        ensureInside(bounds);
+        //ensureInside(bounds);
         return bounds;
     };
-    createEffect(() => (bounds = calculateBounds()));
+    createEffect(() => {
+        bounds = calculateBounds();
+    });
 
     // These are signals & not vars so they can be reactive for JSX
     const [userSelect, setUserSelect] = createSignal<boolean>(true);
@@ -523,19 +530,13 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const ensureInside = (boundary: Bounds | undefined) => {
         if (!boundary) return;
         if (!mainElement) return;
-        action.proposed = {
-            x: state.x + origin.x,
-            y: state.y + origin.y,
-            height: state.height,
-            width: state.width,
-        };
+        action.proposed = state;
         action.amended = amendDrag(action.proposed, boundary);
-        action.amended.x -= origin.x;
-        action.amended.y -= origin.y;
         if (props.onEnsureInside) {
             const result = props.onEnsureInside(action, boundary, origin);
             if (result !== undefined && typeof result === "object") action.amended = result;
         }
+        console.log("ENSURE" + JSON.stringify(action.amended));
         setState(action.amended);
     };
     const ensureInsideWindow = () => ensureInside(calculateBounds());
@@ -575,7 +576,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         });
     };
     createEffect(() => {
-        props.dragHandle;
         manageDragHandle();
     });
 

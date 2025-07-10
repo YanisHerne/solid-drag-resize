@@ -25,17 +25,17 @@ const App: Component = () => {
 
     return (
         <div class={styles.App}>
-            <button onclick={() => setEnabled(!enabled())}>
+            <button onClick={() => setEnabled(!enabled())}>
                 Click to {enabled() ? "disable" : "enable"} overall
             </button>
-            <button onclick={() => setDragEnabled(!dragEnabled())}>
+            <button onClick={() => setDragEnabled(!dragEnabled())}>
                 Click to {dragEnabled() ? "disable" : "enable"} drag
             </button>
-            <button onclick={() => setResizeEnabled(!resizeEnabled())}>
+            <button onClick={() => setResizeEnabled(!resizeEnabled())}>
                 Click to {resizeEnabled() ? "disable" : "enable"} resize
             </button>
             <button
-                onclick={() =>
+                onClick={() =>
                     setPosition({
                         x: 150,
                         y: 200,
@@ -45,7 +45,7 @@ const App: Component = () => {
                 Click to jump to (150, 200)
             </button>
             <button
-                onclick={() =>
+                onClick={() =>
                     setState({
                         x: 100,
                         y: 100,
@@ -56,14 +56,14 @@ const App: Component = () => {
             >
                 Click to jump to (100, 100) with size (100, 100)
             </button>
-            <button onclick={() => setHandleEnabled(!handleEnabled())}>
+            <button onClick={() => setHandleEnabled(!handleEnabled())}>
                 Click to {handleEnabled() ? "disable" : "enable"} the drag handle
             </button>
-            <button onclick={() => console.log(reference)}>Click to console log element ref</button>
-            <button onclick={() => setBoundaries(!boundaries())}>
+            <button onClick={() => console.log(reference)}>Click to console log element ref</button>
+            <button onClick={() => setBoundaries(!boundaries())}>
                 Click to toggle parent/window boundaries
             </button>
-            <button onclick={() => setUserSelect(!userSelect())}>
+            <button onClick={() => setUserSelect(!userSelect())}>
                 Click to {userSelect() ? "disable" : "enable"} user select: none when moving
             </button>
             <DragAndResize

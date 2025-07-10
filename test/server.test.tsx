@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createSignal } from 'solid-js'
 import { isServer, renderToString } from 'solid-js/web'
-import { DragAndResize, Props } from '../src'
+import { DragAndResize } from '../src'
 
 describe('environment', () => {
     it('runs on server', () => {
