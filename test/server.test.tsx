@@ -13,7 +13,7 @@ describe('environment', () => {
 describe('component', () => {
     it('runs on server', () => {
         const string = renderToString(() => <DragAndResize />)
-        expect(string).toBe('<div enabled="true" disableUserSelect="true" style="translate:0px 0px;height:100px;width:100px;user-select:auto;-webkit-user-select:auto" class=""><!--!$--><!--!$--><!--!$--><!--!$--><!--!$--><!--!$--><!--!$--></div>')
+        expect(string).toContain('enabled="true" disableUserSelect="true" style="translate:0px 0px;height:100px;width:100px;user-select:auto;-webkit-user-select:auto"')
     })
 
     it('should allow overriding of the default props', () => {

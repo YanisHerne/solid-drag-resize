@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "strict": true,
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "target": "es2022",
+    "module": "es2022",
+    "lib": ["DOM", "DOM.Iterable", "es2022"],
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,

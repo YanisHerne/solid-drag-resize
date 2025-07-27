@@ -90,7 +90,7 @@ const cursorStyles = {
 } as const;
 
 export type ResizeCallback = (
-    e: MouseEvent & {
+    e: PointerEvent & {
         currentTarget: HTMLDivElement;
         target: DOMElement;
     },
@@ -105,7 +105,7 @@ interface ResizeProps {
 }
 
 export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
-    const onResize: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
+    const onResize: JSX.EventHandler<HTMLDivElement, PointerEvent> = (event) => {
         props.resizeCallback(event, props.direction);
     };
 
@@ -124,7 +124,7 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
             style={Object.assign(resizeStyles[props.direction], {
                 cursor: enabled() ? cursorStyles[props.direction] : "unset",
             })}
-            on:mousedown={onResize}
+            on:pointerdown={onResize}
             {...props}
         >
             {props.children}

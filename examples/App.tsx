@@ -87,24 +87,24 @@ const App: Component = () => {
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"
-                dragStart={(e) => {
-                    console.log("Drag started parameters:");
-                    console.log({ event: e });
-                }}
-                drag={(e, offset, state) => {
-                    console.log("Drag parameters:");
-                    console.log({ event: e, offset: offset, state: state });
-                }}
-                dragEnd={(e, offset, state) => {
-                    console.log("Drag ended parameters");
-                    console.log({ event: e, offset: offset, state: state });
-                    /*return {
-                        x: 0,
-                        y: 0,
-                        height: 200,
-                        width: 200,
-                    };*/
-                }}
+          //      dragStart={(e) => {
+          //          console.log("Drag started parameters:");
+          //          console.log({ event: e });
+          //      }}
+          //      drag={(e, offset, state) => {
+          //          console.log("Drag parameters:");
+          //          console.log({ event: e, offset: offset, state: state });
+          //      }}
+          //      dragEnd={(e, offset, state) => {
+          //          console.log("Drag ended parameters");
+          //          console.log({ event: e, offset: offset, state: state });
+          //          /*return {
+          //              x: 0,
+          //              y: 0,
+          //              height: 200,
+          //              width: 200,
+          //          };*/
+          //      }}
                 resizeStart={(e) => {
                     console.log("Resize started parameters:");
                     console.log({ event: e });

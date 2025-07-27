@@ -11,7 +11,7 @@ Simple, flexible library for creating draggable and resizable components in Soli
 If you don't care about resizing, other good dragging libraries for solid are: [@neodrag/solid](https://www.neodrag.dev/docs/solid), [solid-dnd](https://solid-dnd.com/), and [solid-dnd-directive](https://github.com/isaacHagoel/solid-dnd-directive).
 
 ## TODO List
-* [ ] Fix boundary observer
+* [x] Fix boundary observer
 * [ ] Rework enabled/dragEnabled/resizeEnabled
 * [ ] Fix custom resize handles
 * [ ] Event delegation instead of tons of listeners
