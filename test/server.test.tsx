@@ -13,7 +13,7 @@ describe('environment', () => {
 describe('component', () => {
     it('runs on server', () => {
         const string = renderToString(() => <DragAndResize />)
-        expect(string).toContain('enabled="true" disableUserSelect="true" style="translate:0px 0px;height:100px;width:100px;user-select:auto;-webkit-user-select:auto"')
+        expect(string).toContain('enabled="true" disableUserSelect="true" style="translate:0px 0px;height:100px;width:100px;user-select:auto;-webkit-user-select:auto;touch-action:none"')
     })
 
     it('should allow overriding of the default props', () => {
@@ -51,7 +51,7 @@ describe('component', () => {
             }}
         />)
         expect(string).toContain("class=\"test-class \"")
-        expect(string).toContain("style=\"translate:0px 0px;height:200px;width:100px;user-select:auto;-webkit-user-select:auto;background:black;border-radius:5px\"");
+        expect(string).toContain("style=\"translate:0px 0px;height:200px;width:100px;user-select:auto;-webkit-user-select:auto;touch-action:none;background:black;border-radius:5px\"");
     })
 
     it('should allow passing every type of props at once', () => {
@@ -74,6 +74,6 @@ describe('component', () => {
         expect(string).toContain("id=\"test-id\"")
         expect(string).toContain("data-test=\"test-data\"")
         expect(string).toContain("class=\"test-class \"")
-        expect(string).toContain("style=\"translate:0px 0px;height:200px;width:100px;user-select:auto;-webkit-user-select:auto;background:black;border-radius:5px\"");
+        expect(string).toContain("style=\"translate:0px 0px;height:200px;width:100px;user-select:auto;-webkit-user-select:auto;touch-action:none;background:black;border-radius:5px\"");
     })
 })

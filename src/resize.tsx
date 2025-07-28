@@ -1,5 +1,4 @@
 import { createSignal, createMemo, ParentComponent, JSX } from "solid-js";
-import { DOMElement } from "solid-js/jsx-runtime";
 
 export const directions = [
     "top",
@@ -90,18 +89,17 @@ const cursorStyles = {
 } as const;
 
 export type ResizeCallback = (
-    e: PointerEvent & {
-        currentTarget: HTMLDivElement;
-        target: DOMElement;
-    },
+    e: PointerEvent,
     direction: Direction,
 ) => void;
 
 interface ResizeProps {
     direction: Direction;
     resizeCallback: ResizeCallback;
-    enabled: boolean;
-    resizeEnabled?: boolean;
+    enabled?: boolean | {
+        drag: boolean;
+        resize: boolean;
+    };
 }
 
 export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
@@ -112,7 +110,8 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
     // Band-aid solution for cursor changes
     const [enabled, setEnabled] = createSignal<boolean>(true);
     createMemo(() => {
-        if (!props.enabled || props.resizeEnabled === false) {
+        if (!props.enabled ||
+            (typeof props.enabled === "object" && props.enabled.resize === false)) {
             setEnabled(false);
         } else {
             setEnabled(true);

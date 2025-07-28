@@ -12,8 +12,9 @@ If you don't care about resizing, other good dragging libraries for solid are: [
 
 ## TODO List
 * [x] Fix boundary observer
-* [ ] Rework enabled/dragEnabled/resizeEnabled
-* [ ] Fix custom resize handles
+* [x] Rework enabled/dragEnabled/resizeEnabled
+* [x] Fix touchscreen
+* [x] Fix custom resize handles
 * [ ] Event delegation instead of tons of listeners
 * [ ] Tests
 * [ ] Docs

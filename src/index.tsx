@@ -1,7 +1,6 @@
 import {
     mergeProps,
     ParentComponent,
-    ParentProps,
     For,
     createSignal,
     createEffect,
@@ -82,34 +81,22 @@ const defaultAction: Action = {
     amended: defaultState,
 };
 
-export interface Props {
+export type Props = {
     /**
      * Defaults to true. The component cannot be dragged or resized when this
      * is false. The component's position and size can still be
      * programmatically controlled via the `position` and `state` properties.
-     * Inputting an object with the keys `drag`, `resize`, or both, with
-     * boolean values, can separate control of dragging and resizing.
+     * Inputting an object with the keys `drag`, `resize`, separates control of
+     * dragging and resizing.
      */
-    enabled?: boolean;
-    /**
-     * To enable or disable the dragging functionality without
-     * changing the resizing functionality.
-     */
-    dragEnabled?: boolean;
-    /**
-     * To enable or disable the resizing functionality without
-     * changing the dragging functionality.
-     */
-    resizeEnabled?: boolean;
+    enabled?: boolean | {
+        drag: boolean;
+        resize: boolean;
+    };
     /**
      * A forwarded ref to access to the main element of the component.
      */
     ref?: HTMLElement;
-    /**
-     * If you set this prop, only those directions which are set to true will
-     * have their resize handles instantiated.
-     */
-    resizeAxes?: { [key in Direction]?: boolean };
     /**
      * The size the component starts at before any events fire.
      */
@@ -141,14 +128,28 @@ export interface Props {
      */
     dragHandle?: HTMLElement | string | (HTMLElement | string)[];
     /**
+     * If you set this prop, only those directions which are set to true will
+     * have their resize handles instantiated.
+     */
+    resizeAxes?: { [key in Direction]?: boolean };
+    /**
      * Props to be passed to the eight resize handles. May include children.
      */
     resizeHandleProps?:
-        | {
-              all: { [other: string]: unknown };
-          }
-        | { [key in Direction]: ParentProps & Props };
-    customResizeHandle?: Partial<{ [key in Direction]: Element }>;
+    | {
+        all: { [other: string]: unknown };
+    }
+    | { [key in Direction]: {
+            [other: string]: unknown;
+        }
+    };
+    /**
+     *
+     */
+    customResizeHandles?: Array<{
+        direction: Direction,
+        element: HTMLElement,
+    }>;
     /**
      * When set to `true`, the "user-select" and "-webkit-user-select"
      * properties are set to "none" while dragging or resizing
@@ -163,7 +164,8 @@ export interface Props {
      * setting this to "parent" will use the bounds of the immediate parent of
      * this element as a boundary. You can also input a custom ref to an
      * HTMLElement, specify custom bounds, or specify a function that returns
-     * custom bounds.
+     * custom bounds. Not setting a boundary or setting it to undefined will
+     * allow dragging anywhere, even past the edge of the window.
      */
     boundary?: "window" | "parent" | HTMLElement | Bounds | (() => Bounds) | undefined;
     /**
@@ -210,10 +212,9 @@ export interface Props {
     [other: string]: unknown;
 }
 
-type Prettify<T> = {
-  [K in keyof T]: T[K];
+export type DragAndResizeProps = {
+  [K in keyof Props]: Props[K];
 } & {};
-export type DragAndResizeProps = Prettify<Props>
 
 export const defaultProps = {
     enabled: true,
@@ -243,7 +244,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     createEffect(() => {
         // ResizeObserver cannot be SSR-ed since it is a browser only API
         observer = new ResizeObserver(() => {
-            console.log("Observe")
             origin = {
                 x: mainElement!.getBoundingClientRect().left - state.x,
                 y: mainElement!.getBoundingClientRect().top - state.y,
@@ -266,7 +266,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 const result = props.onEnsureInside(action, bounds, origin);
                 if (isState(result)) action.amended = result;
             }
-            console.log("From: " + JSON.stringify(action.proposed) + "\nTo: " + JSON.stringify(action.amended));
             setState({
                 x: action.amended.x,
                 y: action.amended.y,
@@ -391,9 +390,12 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const onDragStart = (e: PointerEvent) => {
         if (e.button > 1) return;
         if (!mainElement) return;
-        if (!props.enabled || props.dragEnabled === false) return;
+        if (!props.enabled ||
+            (typeof props.enabled === "object" && props.enabled.drag === false))
+            return;
         if (resizing()) {
             onDragEnd(); // When resizing, don't drag
+            // This will be fixed with event delegation
             return;
         }
         if (props.disableUserSelect) setUserSelect(false);
@@ -521,7 +523,9 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const onResizeStart: ResizeCallback = (e, dir) => {
         if (e.button > 1) return;
         if (!mainElement) return;
-        if (!props.enabled || props.resizeEnabled === false) return;
+        if (!props.enabled ||
+            (typeof props.enabled === "object" && props.enabled.resize === false))
+            return;
         if (props.resizeAxes && props.resizeAxes[dir] === false) return;
         if (props.resizeStart) props.resizeStart(e);
         if (props.disableUserSelect) setUserSelect(false);
@@ -550,7 +554,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     };
 
     const handles: HTMLElement[] = [];
-    const manageDragHandle = () => {
+    createEffect(() => {
         handles.forEach((el) => el.removeEventListener("pointerdown", onDragStart));
         handles.length = 0;
         if (!props.dragHandle && mainElement) {
@@ -561,7 +565,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             document.querySelectorAll(props.dragHandle).forEach((handle) => {
                 handles.push(handle as HTMLElement);
             });
-        } else if (
+        } else if ( // If an array of handles & css selectors
             Array.isArray(props.dragHandle) &&
             props.dragHandle.every((i) => typeof i === "string" || i instanceof HTMLElement)
         ) {
@@ -575,11 +579,41 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 }
             });
         }
-        handles.forEach((el) => {
-            el.addEventListener("pointerdown", onDragStart);
+        handles.forEach((el) => el.addEventListener("pointerdown", onDragStart));
+        onCleanup(() => handles.forEach((el) =>
+            el.removeEventListener("pointerdown", onDragStart)
+        ));
+    });
+
+    // Custom resize handles
+    let resizeHandles: Array<{
+        direction: Direction,
+        element: HTMLElement,
+        listener: (e: PointerEvent) => void,
+    }> = [];
+
+    // Closure to capture direction to store correct callback
+    const binder = (args: Direction) => {
+        return (e: PointerEvent ) => onResizeStart(e, args);
+    }
+    createEffect(() => {
+        if (!props.customResizeHandles) return;
+        resizeHandles.forEach((handle) => {
+            handle.element.removeEventListener("pointerdown", handle.listener);
         });
-    };
-    createEffect(() => manageDragHandle());
+        resizeHandles.length = 0;
+        props.customResizeHandles.forEach((handle) => {
+            const listener = binder(handle.direction);
+            handle.element.addEventListener("pointerdown", listener);
+            resizeHandles.push({
+                direction: handle.direction,
+                element: handle.element,
+                listener: listener,
+            });
+        });
+        onCleanup(() => resizeHandles.forEach((handle) =>
+            handle.element.removeEventListener("pointerdown", handle.listener)))
+    });
 
     onCleanup(() => {
         if (!isServer) {
@@ -601,6 +635,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                         width: state.width + "px",
                         "user-select": userSelect() ? "auto" : "none",
                         "-webkit-user-select": userSelect() ? "auto" : "none",
+                        "touch-action": "none",
                     },
                     props.style,
                 ) as JSX.CSSProperties
@@ -629,7 +664,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                             direction={direction}
                             resizeCallback={onResizeStart}
                             enabled={props.enabled}
-                            resizeEnabled={props.resizeEnabled}
                             {...otherProps}
                         />
                     );

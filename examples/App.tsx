@@ -70,9 +70,10 @@ const App: Component = () => {
                 class={styles.DragAndResize + " " + className()}
                 style={{ "border-radius": "0.5rem" }}
                 ref={reference}
-                enabled={enabled()}
-                dragEnabled={dragEnabled()}
-                resizeEnabled={resizeEnabled()}
+                enabled={enabled() ? true : {
+                    drag: dragEnabled(),
+                    resize: resizeEnabled(),
+                }}
                 disableUserSelect={userSelect()}
                 initialState={{ x: 10, y: 10, width: 150, height: 150 }}
                 minSize={{ width: 80, height: 80 }}
@@ -123,8 +124,16 @@ const App: Component = () => {
                         className: "thing",
                     },
                 }}
+                customResizeHandles={[
+                    {
+                        direction: "right",
+                        element: document.getElementById("custom-handle-right")!,
+
+                    }
+                ]}
             >
                 <div class={styles.DragHandle} classList={{ handle: true }} />
+                <div id="custom-handle-right" />
             </DragAndResize>
         </div>
     );
