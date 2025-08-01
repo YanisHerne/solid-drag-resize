@@ -1,5 +1,6 @@
 import {
     mergeProps,
+    createMemo,
     ParentComponent,
     For,
     createSignal,
@@ -387,11 +388,14 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             if (isState(result)) setState(result);
         }
     };
+
+    // solid-js wants to track this, so needs to be in a memo
+    const noDragging = createMemo(() => (!props.enabled || (typeof props.enabled === "object" && props.enabled.drag === false)));
+
     const onDragStart = (e: PointerEvent) => {
         if (e.button > 1) return;
         if (!mainElement) return;
-        if (!props.enabled ||
-            (typeof props.enabled === "object" && props.enabled.drag === false))
+        if (noDragging())
             return;
         if (resizing()) {
             onDragEnd(); // When resizing, don't drag
@@ -520,11 +524,14 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.removeEventListener("pointerup", onResizeEnd);
         document.removeEventListener("pointercancel", onResizeEnd);
     };
+
+    // solid-js wants to track this, so needs to be in a memo
+    const noResizing = createMemo(() => (!props.enabled || (typeof props.enabled === "object" && props.enabled.resize === false)));
+
     const onResizeStart: ResizeCallback = (e, dir) => {
         if (e.button > 1) return;
         if (!mainElement) return;
-        if (!props.enabled ||
-            (typeof props.enabled === "object" && props.enabled.resize === false))
+        if (noResizing())
             return;
         if (props.resizeAxes && props.resizeAxes[dir] === false) return;
         if (props.resizeStart) props.resizeStart(e);
@@ -650,7 +657,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         >
             <For each={directions}>
                 {(direction) => {
-                    if (props.resizeAxes && props.resizeAxes[direction] === false) return;
                     let otherProps: any = undefined;
                     if (props.resizeHandleProps) {
                         if ("all" in props.resizeHandleProps) {
@@ -664,6 +670,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                             direction={direction}
                             resizeCallback={onResizeStart}
                             enabled={props.enabled}
+                            axes={props.resizeAxes}
                             {...otherProps}
                         />
                     );

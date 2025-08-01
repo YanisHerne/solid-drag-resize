@@ -1,4 +1,4 @@
-import { createSignal, createMemo, ParentComponent, JSX } from "solid-js";
+import { Show, createMemo, ParentComponent, JSX } from "solid-js";
 
 export const directions = [
     "top",
@@ -100,6 +100,7 @@ interface ResizeProps {
         drag: boolean;
         resize: boolean;
     };
+    resizeAxes?: { [key in Direction]?: boolean };
 }
 
 export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
@@ -107,26 +108,22 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
         props.resizeCallback(event, props.direction);
     };
 
-    // Band-aid solution for cursor changes
-    const [enabled, setEnabled] = createSignal<boolean>(true);
-    createMemo(() => {
-        if (!props.enabled ||
-            (typeof props.enabled === "object" && props.enabled.resize === false)) {
-            setEnabled(false);
-        } else {
-            setEnabled(true);
-        }
+    const enabled = createMemo(() => {
+        return !(!props.enabled ||
+            (typeof props.enabled === "object" && props.enabled.resize === false))
     });
 
     return (
-        <div
-            style={Object.assign(resizeStyles[props.direction], {
-                cursor: enabled() ? cursorStyles[props.direction] : "unset",
-            })}
-            on:pointerdown={onResize}
-            {...props}
-        >
-            {props.children}
-        </div>
+        <Show when={props.resizeAxes === undefined || (props.resizeAxes && props.resizeAxes[props.direction] === false)}>
+            <div
+                style={Object.assign(resizeStyles[props.direction], {
+                    cursor: enabled() ? cursorStyles[props.direction] : "unset",
+                })}
+                on:pointerdown={onResize}
+                {...props}
+            >
+                {props.children}
+            </div>
+        </Show>
     );
 };

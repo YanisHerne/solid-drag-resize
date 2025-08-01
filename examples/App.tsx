@@ -5,7 +5,7 @@ import { DragAndResize, Position, State, defaultState } from "src";
 
 const App: Component = () => {
     const [enabled, setEnabled] = createSignal<boolean>(true);
-
+    const [separateEnabling, setSeparateEnabling] = createSignal<boolean>(false);
     const [dragEnabled, setDragEnabled] = createSignal<boolean>(true);
     const [resizeEnabled, setResizeEnabled] = createSignal<boolean>(true);
     const [position, setPosition] = createSignal<Position>();
@@ -22,11 +22,15 @@ const App: Component = () => {
             setClassName("draggable");
         }
     });
+    const [rightHandlesOnly, setRightHandlesOnly] = createSignal<boolean>(false);
 
     return (
         <div class={styles.App}>
             <button onClick={() => setEnabled(!enabled())}>
                 Click to {enabled() ? "disable" : "enable"} overall
+            </button>
+            <button onClick={() => setSeparateEnabling(!separateEnabling())}>
+                Click to {separateEnabling() ? "unseparate" : "separate"} enable/disable functions for drag/resize
             </button>
             <button onClick={() => setDragEnabled(!dragEnabled())}>
                 Click to {dragEnabled() ? "disable" : "enable"} drag
@@ -66,14 +70,20 @@ const App: Component = () => {
             <button onClick={() => setUserSelect(!userSelect())}>
                 Click to {userSelect() ? "disable" : "enable"} user select: none when moving
             </button>
+            <button onClick={() => setRightHandlesOnly(!rightHandlesOnly())}>
+                Click to {rightHandlesOnly() ? "hide" : "show"} only the right side resize handles
+            </button>
             <DragAndResize
                 class={styles.DragAndResize + " " + className()}
                 style={{ "border-radius": "0.5rem" }}
                 ref={reference}
-                enabled={enabled() ? true : {
-                    drag: dragEnabled(),
-                    resize: resizeEnabled(),
-                }}
+                enabled={!separateEnabling()
+                    ? enabled()
+                    : {
+                        drag: dragEnabled(),
+                        resize: resizeEnabled(),
+                    }
+                }
                 disableUserSelect={userSelect()}
                 initialState={{ x: 10, y: 10, width: 150, height: 150 }}
                 minSize={{ width: 80, height: 80 }}
@@ -119,6 +129,14 @@ const App: Component = () => {
                     console.log({ event: e, direction: dir, action: action });
                 }}
                 id="DragAndResize"
+                resizeAxes={rightHandlesOnly()
+                    ? undefined
+                    : {
+                    topRight: true,
+                    right: true,
+                    bottomRight: true,
+                    }
+                }
                 resizeHandleProps={{
                     all: {
                         className: "thing",

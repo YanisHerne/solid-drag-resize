@@ -8,13 +8,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 1
 
       - uses: pnpm/action-setup@v4
         name: Install pnpm
@@ -28,10 +28,13 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Install playwright browsers
         run: pnpm playwright install --with-deps
+
+      - name: Lint
+        run: pnpm run lint
 
       - name: Build
         run: pnpm run build
@@ -40,6 +43,3 @@ jobs:
         run: pnpm run test
         env:
           CI: true
-
-      - name: Lint
-        run: pnpm run lint
