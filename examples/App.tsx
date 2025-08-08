@@ -30,7 +30,8 @@ const App: Component = () => {
                 Click to {enabled() ? "disable" : "enable"} overall
             </button>
             <button onClick={() => setSeparateEnabling(!separateEnabling())}>
-                Click to {separateEnabling() ? "unseparate" : "separate"} enable/disable functions for drag/resize
+                Click to {separateEnabling() ? "unseparate" : "separate"} enable/disable functions
+                for drag/resize
             </button>
             <button onClick={() => setDragEnabled(!dragEnabled())}>
                 Click to {dragEnabled() ? "disable" : "enable"} drag
@@ -77,12 +78,13 @@ const App: Component = () => {
                 class={styles.DragAndResize + " " + className()}
                 style={{ "border-radius": "0.5rem" }}
                 ref={reference}
-                enabled={!separateEnabling()
-                    ? enabled()
-                    : {
-                        drag: dragEnabled(),
-                        resize: resizeEnabled(),
-                    }
+                enabled={
+                    !separateEnabling()
+                        ? enabled()
+                        : {
+                              drag: dragEnabled(),
+                              resize: resizeEnabled(),
+                          }
                 }
                 disableUserSelect={userSelect()}
                 initialState={{ x: 10, y: 10, width: 150, height: 150 }}
@@ -98,24 +100,30 @@ const App: Component = () => {
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"
-          //      dragStart={(e) => {
-          //          console.log("Drag started parameters:");
-          //          console.log({ event: e });
-          //      }}
-          //      drag={(e, offset, state) => {
-          //          console.log("Drag parameters:");
-          //          console.log({ event: e, offset: offset, state: state });
-          //      }}
-          //      dragEnd={(e, offset, state) => {
-          //          console.log("Drag ended parameters");
-          //          console.log({ event: e, offset: offset, state: state });
-          //          /*return {
-          //              x: 0,
-          //              y: 0,
-          //              height: 200,
-          //              width: 200,
-          //          };*/
-          //      }}
+                //      dragStart={(e) => {
+                //          console.log("Drag started parameters:");
+                //          console.log({ event: e });
+                drag={(e, offset, state) => {
+                //      }}
+                    console.log("Drag parameters:");
+                    console.log({ event: e, offset: offset, state: state });
+                    return {
+                        x: 0,
+                        y: 0,
+                        height: 200,
+                        width: 200,
+                    };
+                }}
+                //      dragEnd={(e, offset, state) => {
+                //          console.log("Drag ended parameters");
+                //          console.log({ event: e, offset: offset, state: state });
+                //          /*return {
+                //              x: 0,
+                //              y: 0,
+                //              height: 200,
+                //              width: 200,
+                //          };*/
+                //      }}
                 resizeStart={(e) => {
                     console.log("Resize started parameters:");
                     console.log({ event: e });
@@ -129,13 +137,14 @@ const App: Component = () => {
                     console.log({ event: e, direction: dir, action: action });
                 }}
                 id="DragAndResize"
-                resizeAxes={rightHandlesOnly()
-                    ? undefined
-                    : {
-                    topRight: true,
-                    right: true,
-                    bottomRight: true,
-                    }
+                resizeAxes={
+                    rightHandlesOnly()
+                        ? undefined
+                        : {
+                              topRight: true,
+                              right: true,
+                              bottomRight: true,
+                          }
                 }
                 resizeHandleProps={{
                     all: {
@@ -146,8 +155,7 @@ const App: Component = () => {
                     {
                         direction: "right",
                         element: document.getElementById("custom-handle-right")!,
-
-                    }
+                    },
                 ]}
             >
                 <div class={styles.DragHandle} classList={{ handle: true }} />

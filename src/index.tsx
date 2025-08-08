@@ -90,10 +90,12 @@ export type Props = {
      * Inputting an object with the keys `drag`, `resize`, separates control of
      * dragging and resizing.
      */
-    enabled?: boolean | {
-        drag: boolean;
-        resize: boolean;
-    };
+    enabled?:
+        | boolean
+        | {
+              drag: boolean;
+              resize: boolean;
+          };
     /**
      * A forwarded ref to access to the main element of the component.
      */
@@ -134,22 +136,24 @@ export type Props = {
      */
     resizeAxes?: { [key in Direction]?: boolean };
     /**
-     * Props to be passed to the eight resize handles. May include children.
+     * Props to be passed to the eight resize handles.
      */
     resizeHandleProps?:
-    | {
-        all: { [other: string]: unknown };
-    }
-    | { [key in Direction]: {
-            [other: string]: unknown;
-        }
-    };
+        | {
+              all: { [other: string]: unknown };
+          }
+        | {
+              [key in Direction]: {
+                  [other: string]: unknown;
+              };
+          };
     /**
-     *
+     * An array of objects containing the direction and DOM element reference
+     * for any custom resize handle.
      */
     customResizeHandles?: Array<{
-        direction: Direction,
-        element: HTMLElement,
+        direction: Direction;
+        element: HTMLElement;
     }>;
     /**
      * When set to `true`, the "user-select" and "-webkit-user-select"
@@ -209,12 +213,22 @@ export type Props = {
      * the mouse has been lifted up
      */
     resizeEnd?: (e: PointerEvent, direction: Direction, action: Action) => void | State;
+    /**
+     * Set to false to prevent the component from reacting to its boundary
+     * being resized. Otherwise, the component will move itself to remain within
+     * the boundaries.
+     */
+    ensureInside?: boolean;
+    /**
+     * A callback fires that when the current boundaries are resized. A new
+     * state for the component can be optionally returned.
+     */
     onEnsureInside?: (action: Action, bounds: Bounds, origin: Position) => void | State;
     [other: string]: unknown;
-}
+};
 
 export type DragAndResizeProps = {
-  [K in keyof Props]: Props[K];
+    [K in keyof Props]: Props[K];
 } & {};
 
 export const defaultProps = {
@@ -245,18 +259,19 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     createEffect(() => {
         // ResizeObserver cannot be SSR-ed since it is a browser only API
         observer = new ResizeObserver(() => {
+            if (props.ensureInside === false) return;
             origin = {
                 x: mainElement!.getBoundingClientRect().left - state.x,
                 y: mainElement!.getBoundingClientRect().top - state.y,
             };
             calculateBounds();
-            if (!bounds) return
+            if (!bounds) return;
             action.init = unwrap(state);
             action.proposed = action.init;
             action.amended.x = clamp(
                 action.proposed.x,
                 bounds.left - origin.x,
-                window.innerWidth - action.proposed.width - bounds.right - origin.x
+                window.innerWidth - action.proposed.width - bounds.right - origin.x,
             );
             action.amended.y = clamp(
                 action.proposed.y,
@@ -349,7 +364,11 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     const amendDrag = (proposed: State, bounds: Bounds | undefined): State => {
         const amended = proposed;
         if (!bounds) return amended;
-        amended.x = clamp(proposed.x, bounds.left, window.innerWidth - proposed.width - bounds.right);
+        amended.x = clamp(
+            proposed.x,
+            bounds.left,
+            window.innerWidth - proposed.width - bounds.right,
+        );
         amended.y = clamp(
             proposed.y,
             bounds.top,
@@ -370,11 +389,13 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             width: state.width,
         };
         action.amended = amendDrag(action.proposed, bounds);
+        action.amended.x -= origin.x
+        action.amended.y -= origin.y
         if (props.drag) {
             const result = props.drag(e, offset, state);
-            if (isState(result)) setState(result);
+            if (isState(result)) action.amended = result;
         }
-        setState({ x: action.amended.x - origin.x, y: action.amended.y - origin.y });
+        setState({ x: action.amended.x, y: action.amended.y });
     };
     const onDragEnd = (e: PointerEvent | undefined = undefined) => {
         // The undefined `e` since this is sometimes a standalone function
@@ -390,13 +411,12 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     };
 
     // solid-js wants to track this, so needs to be in a memo
-    const noDragging = createMemo(() => (!props.enabled || (typeof props.enabled === "object" && props.enabled.drag === false)));
+    const noDragging = createMemo(
+        () => !props.enabled || (typeof props.enabled === "object" && props.enabled.drag === false),
+    );
 
     const onDragStart = (e: PointerEvent) => {
-        if (e.button > 1) return;
-        if (!mainElement) return;
-        if (noDragging())
-            return;
+        if (e.button > 1 || !mainElement || noDragging()) return;
         if (resizing()) {
             onDragEnd(); // When resizing, don't drag
             // This will be fixed with event delegation
@@ -526,15 +546,14 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     };
 
     // solid-js wants to track this, so needs to be in a memo
-    const noResizing = createMemo(() => (!props.enabled || (typeof props.enabled === "object" && props.enabled.resize === false)));
+    const noResizing = createMemo(
+        () =>
+            !props.enabled || (typeof props.enabled === "object" && props.enabled.resize === false),
+    );
 
     const onResizeStart: ResizeCallback = (e, dir) => {
-        if (e.button > 1) return;
-        if (!mainElement) return;
-        if (noResizing())
-            return;
-        if (props.resizeAxes && props.resizeAxes[dir] === false) return;
-        if (props.resizeStart) props.resizeStart(e);
+        if (e.button > 1 || !mainElement || noResizing() ||
+        props.resizeAxes && props.resizeAxes[dir] === false) return;
         if (props.disableUserSelect) setUserSelect(false);
         setResizing(true);
         direction = dir;
@@ -558,6 +577,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         document.addEventListener("pointermove", onResizeMove);
         document.addEventListener("pointerup", onResizeEnd);
         document.addEventListener("pointercancel", onResizeEnd);
+        if (props.resizeStart) props.resizeStart(e);
     };
 
     const handles: HTMLElement[] = [];
@@ -572,7 +592,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             document.querySelectorAll(props.dragHandle).forEach((handle) => {
                 handles.push(handle as HTMLElement);
             });
-        } else if ( // If an array of handles & css selectors
+        } else if (
+            // If an array of handles & css selectors
             Array.isArray(props.dragHandle) &&
             props.dragHandle.every((i) => typeof i === "string" || i instanceof HTMLElement)
         ) {
@@ -587,22 +608,22 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             });
         }
         handles.forEach((el) => el.addEventListener("pointerdown", onDragStart));
-        onCleanup(() => handles.forEach((el) =>
-            el.removeEventListener("pointerdown", onDragStart)
-        ));
+        onCleanup(() =>
+            handles.forEach((el) => el.removeEventListener("pointerdown", onDragStart)),
+        );
     });
 
     // Custom resize handles
     let resizeHandles: Array<{
-        direction: Direction,
-        element: HTMLElement,
-        listener: (e: PointerEvent) => void,
+        direction: Direction;
+        element: HTMLElement;
+        listener: (e: PointerEvent) => void;
     }> = [];
 
     // Closure to capture direction to store correct callback
     const binder = (args: Direction) => {
-        return (e: PointerEvent ) => onResizeStart(e, args);
-    }
+        return (e: PointerEvent) => onResizeStart(e, args);
+    };
     createEffect(() => {
         if (!props.customResizeHandles) return;
         resizeHandles.forEach((handle) => {
@@ -618,8 +639,11 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                 listener: listener,
             });
         });
-        onCleanup(() => resizeHandles.forEach((handle) =>
-            handle.element.removeEventListener("pointerdown", handle.listener)))
+        onCleanup(() =>
+            resizeHandles.forEach((handle) =>
+                handle.element.removeEventListener("pointerdown", handle.listener),
+            ),
+        );
     });
 
     onCleanup(() => {
@@ -670,7 +694,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                             direction={direction}
                             resizeCallback={onResizeStart}
                             enabled={props.enabled}
-                            axes={props.resizeAxes}
+                            resizeAxes={props.resizeAxes}
                             {...otherProps}
                         />
                     );

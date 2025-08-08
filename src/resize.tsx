@@ -88,18 +88,17 @@ const cursorStyles = {
     topLeft: "nw-resize",
 } as const;
 
-export type ResizeCallback = (
-    e: PointerEvent,
-    direction: Direction,
-) => void;
+export type ResizeCallback = (e: PointerEvent, direction: Direction) => void;
 
 interface ResizeProps {
     direction: Direction;
     resizeCallback: ResizeCallback;
-    enabled?: boolean | {
-        drag: boolean;
-        resize: boolean;
-    };
+    enabled?:
+        | boolean
+        | {
+              drag: boolean;
+              resize: boolean;
+          };
     resizeAxes?: { [key in Direction]?: boolean };
 }
 
@@ -109,12 +108,18 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
     };
 
     const enabled = createMemo(() => {
-        return !(!props.enabled ||
-            (typeof props.enabled === "object" && props.enabled.resize === false))
+        return !(
+            !props.enabled ||
+            (typeof props.enabled === "object" && props.enabled.resize === false)
+        );
+    });
+    const rendered = createMemo(() => {
+        return props.resizeAxes === undefined ||
+        (props.resizeAxes && props.resizeAxes[props.direction] === true)
     });
 
     return (
-        <Show when={props.resizeAxes === undefined || (props.resizeAxes && props.resizeAxes[props.direction] === false)}>
+        <Show when={rendered()}>
             <div
                 style={Object.assign(resizeStyles[props.direction], {
                     cursor: enabled() ? cursorStyles[props.direction] : "unset",

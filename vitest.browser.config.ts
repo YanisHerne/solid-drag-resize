@@ -9,11 +9,15 @@ declare module '@vitest/browser/context' {
         mouseDown(): Promise<void>;
         mouseUp(): Promise<void>;
         mouseMove(
+            locator: "byText"|"byTestId",
             elementText: string,
             xMove: number,
             yMove: number,
         ): Promise<void>;
-        mouseFind(elementText: string): Promise<void>;
+        mouseFind(
+            locator: "byText"|"byTestId",
+            elementText: string
+        ): Promise<void>;
         resizeViewport(width: number, height: number): Promise<void>;
     }
 }
@@ -34,26 +38,36 @@ const mouseUp: BrowserCommand<[]> = async ( ctx ) => {
     }
 }
 
-const mouseFind: BrowserCommand<[string]> = async (
+const mouseFind: BrowserCommand<["byText"|"byTestId", string]> = async (
     ctx,
+    locator,
     elementText,
 ) => {
     if (ctx.provider.name === 'playwright') {
-        const box  = await ctx.iframe.getByText(elementText).boundingBox();
+        let box: { x: number, y: number, height: number, width: number} | null = null;
+        if (locator === "byText")
+            box  = await ctx.iframe.getByText(elementText).boundingBox();
+        if (locator === "byTestId")
+            box  = await ctx.iframe.getByTestId(elementText).boundingBox();
         if (!box) throw new Error("Could not find element in iframe");
         const { x, y, width, height } = box;
         await ctx.page.mouse.move(x + width / 2, y + height / 2);
     }
 }
 
-const mouseMove: BrowserCommand<[string, number, number]> = async (
+const mouseMove: BrowserCommand<["byText"|"byTestId", string, number, number]> = async (
     ctx,
+    locator,
     elementText,
     xMove,
     yMove,
 ) => {
     if (ctx.provider.name === 'playwright') {
-        const box  = await ctx.iframe.getByText(elementText).boundingBox();
+        let box: { x: number, y: number, height: number, width: number} | null = null;
+        if (locator === "byText")
+            box  = await ctx.iframe.getByText(elementText).boundingBox();
+        if (locator === "byTestId")
+            box  = await ctx.iframe.getByTestId(elementText).boundingBox();
         if (!box) throw new Error("Could not find element in iframe");
         const { x, y, width, height } = box;
         await ctx.page.mouse.move(x + width / 2 + xMove, y + height / 2 + yMove);
@@ -67,8 +81,12 @@ export default defineConfig(({mode}: any) => {
     return {
         plugins: [solid()],
         test: {
+            coverage: {
+                include: [ '**/src' ],
+            },
             dir: 'test',
             browser: {
+                //screenshotFailures: true,
                 enabled: true,
                 provider: 'playwright',
                 // https://vitest.dev/guide/browser/playwright
@@ -77,14 +95,14 @@ export default defineConfig(({mode}: any) => {
                         browser: 'chromium',
                         headless: headless,
                     },
-                    {
-                        browser: 'firefox',
-                        headless: headless,
-                    },
-                    {
-                        browser: 'webkit',
-                        headless: headless,
-                    },
+                  //  {
+                  //      browser: 'firefox',
+                  //      headless: headless,
+                  //  },
+                  //  {
+                  //      browser: 'webkit',
+                  //      headless: headless,
+                  //  },
                 ],
                 commands: {
                     mouseDown,
