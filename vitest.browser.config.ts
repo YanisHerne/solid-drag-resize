@@ -1,5 +1,5 @@
 /// <reference types="@vitest/browser/providers/playwright" />
-import { defineConfig } from 'vitest/config'
+import { ConfigEnv, defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
 import { type BrowserCommand } from 'vitest/node'
 import { type BrowserCommands } from '@vitest/browser/context'
@@ -74,9 +74,36 @@ const mouseMove: BrowserCommand<["byText"|"byTestId", string, number, number]> =
     }
 }
 
-export default defineConfig(({mode}: any) => {
-    let headless: boolean = false;
-    if (mode=="headless") headless = true
+export default defineConfig(({ mode }: ConfigEnv) => {
+    let instances: Array<{
+        browser: 'chromium'|'firefox'|'webkit',
+        headless: boolean,
+    }> = [];
+    if (mode == "headless") {
+        instances = [
+            {
+                browser: 'chromium',
+                headless: true,
+            },
+            {
+                browser: 'firefox',
+                headless: true,
+            },
+        ];
+    } else {
+        instances = [
+            {
+                browser: 'chromium',
+                headless: true,
+            },
+        ];
+    }
+//
+//        {
+//            browser: 'webkit',
+//            headless: headless,
+//        },
+//    ]
 
     return {
         plugins: [solid()],
@@ -90,20 +117,7 @@ export default defineConfig(({mode}: any) => {
                 enabled: true,
                 provider: 'playwright',
                 // https://vitest.dev/guide/browser/playwright
-                instances: [
-                    {
-                        browser: 'chromium',
-                        headless: headless,
-                    },
-                  //  {
-                  //      browser: 'firefox',
-                  //      headless: headless,
-                  //  },
-                  //  {
-                  //      browser: 'webkit',
-                  //      headless: headless,
-                  //  },
-                ],
+                instances: instances,
                 commands: {
                     mouseDown,
                     mouseUp,

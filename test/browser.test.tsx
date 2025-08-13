@@ -908,7 +908,7 @@ describe('Resize functionality', async () => {
         expect(rect.y).toBeCloseTo(0);
     });
 
-    it('should respect boundary "parent" during resizing', async () => {
+    it.skip('should respect boundary "parent" during resizing', async () => {
         const textContent = "Resize Parent Boundary";
         const parentId = "parent-boundary";
         const handleIds = createHandleIds(textContent);

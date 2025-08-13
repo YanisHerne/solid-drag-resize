@@ -114,8 +114,10 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
         );
     });
     const rendered = createMemo(() => {
-        return props.resizeAxes === undefined ||
-        (props.resizeAxes && props.resizeAxes[props.direction] === true)
+        return (
+            props.resizeAxes === undefined ||
+            (props.resizeAxes && props.resizeAxes[props.direction] === true)
+        );
     });
 
     return (

@@ -103,8 +103,8 @@ const App: Component = () => {
                 //      dragStart={(e) => {
                 //          console.log("Drag started parameters:");
                 //          console.log({ event: e });
-                drag={(e, offset, state) => {
                 //      }}
+                drag={(e, offset, state) => {
                     console.log("Drag parameters:");
                     console.log({ event: e, offset: offset, state: state });
                     return {

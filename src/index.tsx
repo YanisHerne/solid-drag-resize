@@ -389,8 +389,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
             width: state.width,
         };
         action.amended = amendDrag(action.proposed, bounds);
-        action.amended.x -= origin.x
-        action.amended.y -= origin.y
+        action.amended.x -= origin.x;
+        action.amended.y -= origin.y;
         if (props.drag) {
             const result = props.drag(e, offset, state);
             if (isState(result)) action.amended = result;
@@ -552,8 +552,13 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     );
 
     const onResizeStart: ResizeCallback = (e, dir) => {
-        if (e.button > 1 || !mainElement || noResizing() ||
-        props.resizeAxes && props.resizeAxes[dir] === false) return;
+        if (
+            e.button > 1 ||
+            !mainElement ||
+            noResizing() ||
+            (props.resizeAxes && props.resizeAxes[dir] === false)
+        )
+            return;
         if (props.disableUserSelect) setUserSelect(false);
         setResizing(true);
         direction = dir;

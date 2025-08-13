@@ -1,6 +1,7 @@
-node_modules
-dist
+**/node_modules
+**/dist
 **/.DS_Store
+**/coverage
 
 # tsup
 tsup.config.bundled_*.{m,c,}s
