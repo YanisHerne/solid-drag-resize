@@ -6,6 +6,7 @@
 
 [![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-cc00ff.svg?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
 [![Build and Test](https://img.shields.io/github/actions/workflow/status/YanisHerne/solid-drag-resize/tests.yml?branch=main&logo=github&style=for-the-badge&label=Build%20and%20Test)](https://github.com/YanisHerne/solid-drag-resize/actions/workflows/tests.yml)
+[![Coverage Status](https://img.shields.io/coverallsCoverage/github/YanisHerne/solid-drag-resize.svg?style=for-the-badge)](https://coveralls.io/github/YanisHerne/solid-drag-resize?branch=main)
 
 Simple, flexible library for creating draggable and resizable components in SolidJS.
 
