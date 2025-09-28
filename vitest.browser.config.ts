@@ -79,6 +79,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         browser: 'chromium'|'firefox'|'webkit',
         headless: boolean,
     }> = [];
+
     if (mode == "headless") {
         instances = [
             {
@@ -89,21 +90,34 @@ export default defineConfig(({ mode }: ConfigEnv) => {
                 browser: 'firefox',
                 headless: true,
             },
+            {
+                browser: 'webkit',
+                headless: true,
+            },
         ];
-    } else {
+    } else if (mode == "coverage") {
         instances = [
             {
                 browser: 'chromium',
                 headless: true,
             },
         ];
+    } else {
+        instances = [
+            {
+                browser: 'chromium',
+                headless: false,
+            },
+            {
+                browser: 'firefox',
+                headless: false,
+            },
+            {
+                browser: 'webkit',
+                headless: false,
+            },
+        ];
     }
-//
-//        {
-//            browser: 'webkit',
-//            headless: headless,
-//        },
-//    ]
 
     return {
         plugins: [solid()],
@@ -113,7 +127,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
             },
             dir: 'test',
             browser: {
-                //screenshotFailures: true,
+                screenshotFailures: false,
                 enabled: true,
                 provider: 'playwright',
                 // https://vitest.dev/guide/browser/playwright

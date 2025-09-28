@@ -34,16 +34,16 @@ const simulateResize = async (
     await commands.mouseUp();
 };
 
-/*let initialSize: {
+let initialSize: {
     width: number,
     height: number,
-};*/
+};
 
 beforeAll(() => {
-    /*initialSize = {
+    initialSize = {
         width: window.outerWidth,
-        height: window.outerHeight,
-    }*/
+        height: window.innerHeight,
+    };
     commands.resizeViewport(1920, 1080);
 });
 
@@ -59,8 +59,7 @@ afterAll(() => {
         const el = child as HTMLElement;
         el.style.display = "block";
     }
-    //commands.resizeViewport(initialSize.width, initialSize.height);
-    commands.resizeViewport(1300, 720);
+    commands.resizeViewport(initialSize.width, initialSize.height);
 });
 
 describe('Environment', () => {
@@ -470,7 +469,7 @@ describe('Drag functionality', async () => {
         Object.defineProperty(window, 'innerHeight', { writable: true, value: originalWindowInnerHeight });
     });
 
-    it.skip('should respect boundaries "parent" during drag', async () => {
+    it('should respect boundaries "parent" during drag', async () => {
         const { getByText } = render(() => (
             <div style="width: 300px; height: 300px; margin: 10px; padding: 10px;">
                 <DragAndResize
@@ -577,7 +576,7 @@ describe('Resize functionality', async () => {
         expect(initialRect.height).toBeCloseTo(100);
 
         await simulateResize(handleIds.bottomRight['data-testid'], 50, 50);
-        await waitForRender();
+        await waitForRender(100);
 
         const finalRect = element.getBoundingClientRect();
         expect(finalRect.width).toBeCloseTo(150);
@@ -851,8 +850,8 @@ describe('Resize functionality', async () => {
         expect(rect.y).toBeCloseTo(0);
     });
 
-    it.skip('should ignore boundary `undefined` during resizing', async () => {
-        const textContent = "Resize-Window-Boundary";
+    it('should ignore boundary `undefined` during resizing', async () => {
+        const textContent = "Resize-Undefined-Boundary";
         const handleIds = createHandleIds(textContent);
         const { getByText } = render(() => (
             <DragAndResize
@@ -867,14 +866,21 @@ describe('Resize functionality', async () => {
         const element = getByText(textContent);
         const parentRect = element.parentElement?.getBoundingClientRect();
         if (!parentRect) throw new Error("Something weird happened")
+
         let rect = element.getBoundingClientRect();
         expect(rect.width).toBeCloseTo(100);
         expect(rect.height).toBeCloseTo(100);
 
-        await simulateResize(handleIds.right["data-testid"], parentRect.width, 0);
-        await waitForRender();
-        expect(rect.width).toBeCloseTo(parentRect.width);
-        expect(rect.height).toBeCloseTo(parentRect.height);
+        expect(parentRect.width).toBeLessThan(400);
+        expect(parentRect.height).toBeLessThan(400);
+
+        await simulateResize(handleIds.bottomRight["data-testid"], 400, 400);
+        rect = element.getBoundingClientRect();
+        expect(rect.width).toBeCloseTo(500);
+        expect(rect.height).toBeCloseTo(500);
+
+        expect(parentRect.width).toBeLessThan(400);
+        expect(parentRect.height).toBeLessThan(400);
     });
 
     it('should respect boundary "window" during resizing', async () => {
@@ -908,7 +914,7 @@ describe('Resize functionality', async () => {
         expect(rect.y).toBeCloseTo(0);
     });
 
-    it.skip('should respect boundary "parent" during resizing', async () => {
+    it('should respect boundary "parent" during resizing', async () => {
         const textContent = "Resize Parent Boundary";
         const parentId = "parent-boundary";
         const handleIds = createHandleIds(textContent);
@@ -951,6 +957,146 @@ describe('Resize functionality', async () => {
         expect(rect.y).toBeCloseTo(50);
     });
 });
+/*
+describe("additional props", () => {
+    it("supports dragHandle as HTMLElement array", async () => {
+        const textContent = "drag handle test";
+        const handle = document.createElement("div");
+        handle.className = "handle";
+        document.body.appendChild(handle);
+
+        render(() => (
+            <DragAndResize dragHandle={[handle]}>
+                <div ref={el => el && el.appendChild(handle)}>wrapper</div>
+                {textContent}
+            </DragAndResize>
+        ));
+
+        await waitForRender();
+
+        const el = screen.getByText(textContent).parentElement!;
+        expect(el).toBeVisible();
+
+        const { dx } = await simulateDrag(el, 50, 0, { handleSelector: ".handle" });
+        expect(dx).toBeGreaterThan(0);
+    });
+
+    it("respects resizeAxes by creating only allowed handles", async () => {
+        const textContent = "resize axes test";
+        render(
+            <DragAndResize resizeAxes={{ n: true, e: false, s: true, w: false }}>
+                {textContent}
+            </DragAndResize>
+        );
+
+        await waitForRender();
+
+        const el = screen.getByText(textContent).parentElement!;
+        expect(el.querySelector("[data-dir='n']")).toBeTruthy();
+        expect(el.querySelector("[data-dir='s']")).toBeTruthy();
+        expect(el.querySelector("[data-dir='e']")).toBeFalsy();
+        expect(el.querySelector("[data-dir='w']")).toBeFalsy();
+    });
+
+    it("applies resizeHandleProps per direction", async () => {
+        const textContent = "resize handle props test";
+        render(
+            <DragAndResize
+                resizeAxes={{ e: true, w: true }}
+                resizeHandleProps={{
+                    e: { id: "east-handle" },
+                    w: { id: "west-handle" }
+                }}
+            >
+                {textContent}
+            </DragAndResize>
+        );
+
+        await waitForRender();
+
+        const el = screen.getByText(textContent).parentElement!;
+        expect(el.querySelector("#east-handle")).toBeTruthy();
+        expect(el.querySelector("#west-handle")).toBeTruthy();
+    });
+
+    it("supports customResizeHandles and omits default handles for those directions", async () => {
+        const textContent = "custom handles test";
+        render(
+            <DragAndResize
+                resizeAxes={{ e: true }}
+                customResizeHandles={{
+                    e: <div data-testid="custom-east" />
+                }}
+            >
+                {textContent}
+            </DragAndResize>
+        );
+
+        await waitForRender();
+
+        const el = screen.getByText(textContent).parentElement!;
+        expect(el.querySelector("[data-testid='custom-east']")).toBeTruthy();
+        expect(el.querySelector("[data-dir='e']")).toBeFalsy();
+    });
+
+    it("keeps element within functional boundary and calls onEnsureInside", async () => {
+        const textContent = "ensure inside test";
+        const boundaryRect = { left: 0, top: 0, right: 300, bottom: 300 };
+        const onEnsureInside = vi.fn();
+
+        render(
+            <DragAndResize
+                boundary={() => boundaryRect}
+                ensureInside
+                onEnsureInside={onEnsureInside}
+            >
+                {textContent}
+            </DragAndResize>
+        );
+
+        await waitForRender();
+
+        const el = screen.getByText(textContent).parentElement!;
+        await simulateDrag(el, 1000, 1000);
+        expect(onEnsureInside).toHaveBeenCalled();
+    });
+
+    it("keeps element within HTMLElement boundary", async () => {
+        const textContent = "element boundary test";
+        let boundaryEl: HTMLDivElement;
+
+        render(
+            <>
+                <div
+                    ref={el => {
+                        if (el) boundaryEl = el;
+                    }}
+                    style={{
+                        position: "absolute",
+                        left: "0px",
+                        top: "0px",
+                        width: "200px",
+                        height: "200px"
+                    }}
+                    data-testid="boundary"
+                />
+                <DragAndResize boundary={() => boundaryEl!} ensureInside>
+                    {textContent}
+                </DragAndResize>
+            </>
+        );
+
+        await waitForRender();
+
+        const el = screen.getByText(textContent).parentElement!;
+        await simulateDrag(el, 500, 500);
+        const boundaryBox = boundaryEl!.getBoundingClientRect();
+        const targetBox = el.getBoundingClientRect();
+        expect(targetBox.right).toBeLessThanOrEqual(boundaryBox.right);
+        expect(targetBox.bottom).toBeLessThanOrEqual(boundaryBox.bottom);
+    });
+});
+
 
 // Drag handle configuration
 // Boundaries with changing boundaries & ensureInside
