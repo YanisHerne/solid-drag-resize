@@ -22,7 +22,7 @@ const App: Component = () => {
             setClassName("draggable");
         }
     });
-    const [rightHandlesOnly, setRightHandlesOnly] = createSignal<boolean>(false);
+    const [rightHandlesOnly, setRightHandlesOnly] = createSignal<boolean>(true);
 
     return (
         <div class={styles.App}>
@@ -72,19 +72,21 @@ const App: Component = () => {
                 Click to {userSelect() ? "disable" : "enable"} user select: none when moving
             </button>
             <button onClick={() => setRightHandlesOnly(!rightHandlesOnly())}>
-                Click to {rightHandlesOnly() ? "hide" : "show"} only the right side resize handles
+                Click to enable {rightHandlesOnly() ? "only the right handle resize handles" : "all of the resize handles"}
             </button>
             <DragAndResize
                 class={styles.DragAndResize + " " + className()}
-                style={{ "border-radius": "0.5rem" }}
+                style={{
+                    "border-radius": "0.5rem",
+                }}
                 ref={reference}
                 enabled={
-                    !separateEnabling()
-                        ? enabled()
-                        : {
-                              drag: dragEnabled(),
-                              resize: resizeEnabled(),
-                          }
+                    separateEnabling()
+                        ? {
+                            drag: dragEnabled(),
+                            resize: resizeEnabled(),
+                        }
+                        : enabled()
                 }
                 disableUserSelect={userSelect()}
                 initialState={{ x: 10, y: 10, width: 150, height: 150 }}
@@ -100,30 +102,18 @@ const App: Component = () => {
                 dragHandle={handleEnabled() ? ".handle" : undefined}
                 classWhileDragging="currentlyDragging"
                 classWhileResizing="currentlyResizing"
-                //      dragStart={(e) => {
-                //          console.log("Drag started parameters:");
-                //          console.log({ event: e });
-                //      }}
+                dragStart={(e) => {
+                    console.log("Drag started parameters:");
+                    console.log({ event: e });
+                }}
                 drag={(e, offset, state) => {
                     console.log("Drag parameters:");
                     console.log({ event: e, offset: offset, state: state });
-                    return {
-                        x: 0,
-                        y: 0,
-                        height: 200,
-                        width: 200,
-                    };
                 }}
-                //      dragEnd={(e, offset, state) => {
-                //          console.log("Drag ended parameters");
-                //          console.log({ event: e, offset: offset, state: state });
-                //          /*return {
-                //              x: 0,
-                //              y: 0,
-                //              height: 200,
-                //              width: 200,
-                //          };*/
-                //      }}
+                dragEnd={(e, offset, state) => {
+                    console.log("Drag ended parameters");
+                    console.log({ event: e, offset: offset, state: state });
+                }}
                 resizeStart={(e) => {
                     console.log("Resize started parameters:");
                     console.log({ event: e });

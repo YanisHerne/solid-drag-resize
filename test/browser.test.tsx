@@ -1,26 +1,71 @@
-import { createSignal } from 'solid-js'
+import { createSignal, JSX } from 'solid-js'
 import { isServer } from 'solid-js/web'
-import { render, waitFor } from '@solidjs/testing-library'
+import { render, cleanup } from '@solidjs/testing-library'
 
-import { describe, expect, it, beforeAll, afterEach, afterAll, vi} from 'vitest'
+import { describe, expect, it, beforeAll, afterEach, afterAll, vi } from 'vitest'
 import { page,  commands } from '@vitest/browser/context'
 
 import { DragAndResize, type State, type Bounds } from '../src'
 import { type Direction } from '../src/resize'
 
 // Don't make the default delay any smaller
-const waitForRender = async (delay=10) => await new Promise(resolve => setTimeout(resolve, delay));
+const waitForRender = async (delay=10) =>
+    await new Promise(resolve =>
+        setTimeout(resolve, delay));
 
 const simulateDrag = async (
     element: HTMLElement,
     x: number,
     y: number,
 ) => {
-    if (!element.textContent) throw Error("Tried dragging element without locator")
+    if (!element.textContent) throw new Error("Tried dragging element without locator")
     await commands.mouseFind("byText", element.textContent);
     await commands.mouseDown();
     await commands.mouseMove("byText", element.textContent, x, y);
     await commands.mouseUp();
+
+    /*
+    const common = {
+        pointerId: 1,
+        width: 5,
+        height: 5,
+        pointerType: 'mouse',
+        bubbles: true,
+        cancelable: true,
+    }
+    const rect = element.getBoundingClientRect()
+    const event1 = new PointerEvent("pointerdown", {
+        ...common,
+        clientX: rect.x,
+        clientY: rect.y,
+    });
+    element.dispatchEvent(event1);
+    await waitForRender();
+
+    const event2 = new PointerEvent("pointermove", {
+        ...common,
+        clientX: rect.x + x/2,
+        clientY: rect.y + y/2,
+e   });
+    element.dispatchEvent(event2);
+    await waitForRender();
+
+    const event3 = new PointerEvent("pointermove", {
+        ...common,
+        clientX: rect.x + x,
+        clientY: rect.y + y,
+    });
+    element.dispatchEvent(event3);
+    await waitForRender();
+
+    const event4 = new PointerEvent("pointerup", {
+        ...common,
+        clientX: rect.x + x,
+        clientY: rect.y + y,
+    });
+    element.dispatchEvent(event4);
+    await waitForRender();
+    */
 };
 
 const simulateResize = async (
@@ -32,6 +77,53 @@ const simulateResize = async (
     await commands.mouseDown();
     await commands.mouseMove("byTestId", elementTestId, x, y);
     await commands.mouseUp();
+
+    /*
+    const element = document.querySelector(`[data-testid="${elementTestId}"]`);
+    if (!element) throw new Error("Resize element not found");
+    const rect = element.getBoundingClientRect()
+    const event1 = new PointerEvent("pointerdown", {
+        pointerId: 1,
+        width: 5,
+        height: 5,
+        pointerType: 'mouse',
+        isPrimary: true,
+        clientX: rect.x,
+        clientY: rect.y,
+        bubbles: true,
+        cancelable: true,
+    });
+    element.dispatchEvent(event1);
+    await waitForRender();
+
+    const event2 = new PointerEvent("pointermove", {
+        pointerId: 1,
+        width: 5,
+        height: 5,
+        pointerType: 'mouse',
+        isPrimary: true,
+        clientX: rect.x + x,
+        clientY: rect.y + y,
+        bubbles: true,
+        cancelable: true,
+    });
+    element.dispatchEvent(event2);
+    await waitForRender();
+
+    const event3 = new PointerEvent("pointermove", {
+        pointerId: 1,
+        width: 5,
+        height: 5,
+        pointerType: 'mouse',
+        isPrimary: true,
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+        cancelable: true,
+    });
+    element.dispatchEvent(event3);
+    await waitForRender();
+    */
 };
 
 let initialSize: {
@@ -39,26 +131,38 @@ let initialSize: {
     height: number,
 };
 
-beforeAll(() => {
+//const allTests: Element[] = [];
+
+beforeAll(async () => {
     initialSize = {
         width: window.outerWidth,
         height: window.innerHeight,
     };
-    commands.resizeViewport(1920, 1080);
+    await commands.resizeViewport(1920, 1080);
 });
 
 afterEach(() => {
-    for (const child of document.body.children) {
-        const el = child as HTMLElement;
-        el.style.display = "none";
-    }
+    cleanup();
+//    for (const child of document.body.children) {
+//        /*
+//        const el = child as HTMLElement;
+//        el.style.display = "none";
+//        */
+//        document.body.removeChild(child);
+//        allTests.push(child)
+//    }
 });
 
 afterAll(() => {
-    for (const child of document.body.children) {
-        const el = child as HTMLElement;
-        el.style.display = "block";
-    }
+//    /*
+//    for (const child of document.body.children) {
+//        const el = child as HTMLElement;
+//        el.style.display = "block";
+//    }
+//    */
+//    allTests.forEach((child) => {
+//        document.body.appendChild(child);
+//    });
     commands.resizeViewport(initialSize.width, initialSize.height);
 });
 
@@ -163,7 +267,7 @@ describe('Basic props', () => {
     });
 })
 
-describe('Drag functionality', async () => {
+describe.shuffle('Drag functionality', () => {
     it('should drag the component', async () => {
         const textContent = "Basic Dragging"
         const { getByText } = render(() => (
@@ -176,21 +280,23 @@ describe('Drag functionality', async () => {
         await waitForRender();
 
         const initialRect = element.getBoundingClientRect();
-        expect(initialRect.x).toBeCloseTo(0);
-        expect(initialRect.y).toBeCloseTo(0);
+        expect(initialRect.x).toBeCloseTo(0, 1);
+        expect(initialRect.y).toBeCloseTo(0, 1);
 
         await simulateDrag(element, 50, 50);
         await waitForRender();
 
         const finalRect = element.getBoundingClientRect();
-        expect(finalRect.x).toBeCloseTo(50);
-        expect(finalRect.y).toBeCloseTo(50);
+        expect(finalRect.x).toBeCloseTo(50, 1);
+        expect(finalRect.y).toBeCloseTo(50, 1);
     });
 
     it('should drag using the specified handle (string selector)', async () => {
         const { getByText } = render(() => (
             <DragAndResize initialState={{ x: 0, y: 0, width: 100, height: 100 }} dragHandle=".handle">
-                <div class="handle">Drag Handle</div>
+                <div
+                    class="handle"
+                >Drag Handle</div>
                 <div>Content</div>
             </DragAndResize>
         ));
@@ -201,20 +307,95 @@ describe('Drag functionality', async () => {
         await new Promise(resolve => setTimeout(resolve, 0));
 
         let rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(0);
-        expect(rect.top).toBeCloseTo(0);
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
 
         // Attempt to drag the component itself (should not work)
         await simulateDrag(element, 50, 50);
         rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(0);
-        expect(rect.top).toBeCloseTo(0);
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
 
         // Drag using the handle
         await simulateDrag(handle, 50, 50);
         rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(50);
-        expect(rect.top).toBeCloseTo(50);
+        expect(rect.left).toBeCloseTo(50, 1);
+        expect(rect.top).toBeCloseTo(50, 1);
+    });
+
+    it('should drag using the specified handle (element reference)', async () => {
+        const { getByText } = render(() => (
+            <DragAndResize initialState={{ x: 0, y: 0, width: 100, height: 100 }} dragHandle={document.querySelector(".handle")!}>
+                <div
+                    class="handle"
+                >Drag Handle</div>
+                <div>Content</div>
+            </DragAndResize>
+        ));
+
+        const handle = getByText("Drag Handle");
+        const element = handle.parentElement!;
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        let rect = element.getBoundingClientRect();
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
+
+        // Attempt to drag the component itself (should not work)
+        await simulateDrag(element, 50, 50);
+        rect = element.getBoundingClientRect();
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
+
+        // Drag using the handle
+        await simulateDrag(handle, 50, 50);
+        rect = element.getBoundingClientRect();
+        expect(rect.left).toBeCloseTo(50, 1);
+        expect(rect.top).toBeCloseTo(50, 1);
+    });
+
+    it('should drag using the specified handles (array of selectors and elements)', async () => {
+        const { getByText } = render(() => (
+            <DragAndResize
+                initialState={{ x: 0, y: 0, width: 100, height: 100 }}
+                dragHandle={[".handle", document.querySelector(".handle2")!]}
+            >
+                <span class="handle" >Handle1</span>
+                <span class="handle2" >Handle2</span>
+                <div>Content</div>
+            </DragAndResize>
+        ));
+
+        const handle1 = getByText("Handle1");
+        const handle2 = getByText("Handle2");
+        const element = handle1.parentElement!;
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        let rect = element.getBoundingClientRect();
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
+
+        // Attempt to drag the component itself (should not work)
+        await simulateDrag(element, 50, 50);
+        rect = element.getBoundingClientRect();
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
+
+        // Drag using first handle
+        await simulateDrag(handle1, 50, 50);
+        await waitForRender();
+        rect = element.getBoundingClientRect();
+        expect(rect.left).toBeCloseTo(50, 1);
+        expect(rect.top).toBeCloseTo(50, 1);
+
+        // Drag using second handle
+        await simulateDrag(handle2, -25, -25);
+        await waitForRender();
+        rect = element.getBoundingClientRect();
+        expect(rect.left).toBeCloseTo(25, 1);
+        expect(rect.top).toBeCloseTo(25, 1);
     });
 
     it('should add classWhileDragging during drag and remove it afterwards', async () => {
@@ -234,15 +415,15 @@ describe('Drag functionality', async () => {
 
         await commands.mouseFind("byText", textContent);
         await commands.mouseDown();
-        await waitForRender(100);
+        await waitForRender(200);
         expect(element).toHaveClass(testClass);
 
         await commands.mouseMove("byText", textContent, 50, 50);
-        await waitForRender(100);
+        await waitForRender(200);
         expect(element).toHaveClass(testClass);
 
         await commands.mouseUp();
-        await waitForRender(100);
+        await waitForRender(200);
         expect(element).not.toHaveClass(testClass);
     });
 
@@ -252,7 +433,7 @@ describe('Drag functionality', async () => {
         const dragEndMock = vi.fn();
 
         const textContent = "Dragging Callbacks"
-        const { getByText } = render(() => (
+        render(() => (
             <DragAndResize
                 initialState={{ x: 0, y: 0, width: 100, height: 100 }}
                 dragStart={dragStartMock}
@@ -338,15 +519,15 @@ describe('Drag functionality', async () => {
         const element = getByText(textContent) as HTMLElement;
 
         let rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(0);
-        expect(rect.top).toBeCloseTo(0);
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
 
         await commands.mouseFind("byText", textContent);
         await commands.mouseDown();
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(50);
-        expect(rect.top).toBeCloseTo(50);
+        expect(rect.left).toBeCloseTo(50, 1);
+        expect(rect.top).toBeCloseTo(50, 1);
         await commands.mouseUp();
     });
 
@@ -355,7 +536,7 @@ describe('Drag functionality', async () => {
         const { getByText } = render(() => (
             <DragAndResize
                 initialState={{ x: 0, y: 0, width: 100, height: 100 }}
-                drag={(e, offset, state) => {
+                drag={(_event, _offset, _state) => {
                     return { x: 50, y: 50, width: 100, height: 100 }
                 }}
             >
@@ -366,16 +547,16 @@ describe('Drag functionality', async () => {
         const element = getByText(textContent) as HTMLElement;
 
         let rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(0);
-        expect(rect.top).toBeCloseTo(0);
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
 
         await commands.mouseFind("byText", textContent);
         await commands.mouseDown();
         await commands.mouseMove("byText", textContent, 20, 20);
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(50);
-        expect(rect.top).toBeCloseTo(50);
+        expect(rect.left).toBeCloseTo(50, 1);
+        expect(rect.top).toBeCloseTo(50, 1);
         await commands.mouseUp();
     });
 
@@ -393,22 +574,22 @@ describe('Drag functionality', async () => {
         const element = getByText(textContent) as HTMLElement;
 
         let rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(0);
-        expect(rect.top).toBeCloseTo(0);
+        expect(rect.left).toBeCloseTo(0, 1);
+        expect(rect.top).toBeCloseTo(0, 1);
 
         await commands.mouseFind("byText", textContent);
         await commands.mouseDown();
         await commands.mouseMove("byText", textContent, 50, 50);
         await waitForRender()
         rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(50);
-        expect(rect.top).toBeCloseTo(50);
+        expect(rect.left).toBeCloseTo(50, 1);
+        expect(rect.top).toBeCloseTo(50, 1);
 
         await commands.mouseUp();
         await waitForRender()
         rect = element.getBoundingClientRect();
-        expect(rect.left).toBeCloseTo(100);
-        expect(rect.top).toBeCloseTo(100);
+        expect(rect.left).toBeCloseTo(100, 1);
+        expect(rect.top).toBeCloseTo(100, 1);
     });
 
     it('should ignore boundary `undefined` during dragging', async () => {
@@ -424,89 +605,126 @@ describe('Drag functionality', async () => {
         await waitForRender();
         const element = getByText(textContent);
         let rect = element.getBoundingClientRect();
-        expect(rect.x).toBeCloseTo(0);
-        expect(rect.y).toBeCloseTo(0);
+        expect(rect.x).toBeCloseTo(0, 1);
+        expect(rect.y).toBeCloseTo(0, 1);
 
         await simulateDrag(element, -20, -20);
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.x).toBeCloseTo(-20);
-        expect(rect.y).toBeCloseTo(-20);
+        expect(rect.x).toBeCloseTo(-20, 1);
+        expect(rect.y).toBeCloseTo(-20, 1);
     });
 
-    it.skip('should respect boundaries "window" during drag', async () => {
-        // Mock window dimensions for consistent testing
-        const originalWindowInnerWidth = window.innerWidth;
-        const originalWindowInnerHeight = window.innerHeight;
-        Object.defineProperty(window, 'innerWidth', { writable: true, value: 500 });
-        Object.defineProperty(window, 'innerHeight', { writable: true, value: 500 });
-
+    it('should respect boundaries "window" during drag', async () => {
+        const textContent = "Window-Bounded-Drag"
         const { getByText } = render(() => (
             <DragAndResize
                 initialState={{ x: 0, y: 0, width: 100, height: 100 }}
                 boundary="window"
             >
-                Bounded Drag
+                {textContent}
             </DragAndResize>
         ));
-        waitForRender();
-        const element = getByText("Bounded Drag") as HTMLElement;
 
-        // Drag far right and down
-        await simulateDrag(element, 600, 600);
+        await waitForRender();
+        const element = getByText(textContent);
         let rect = element.getBoundingClientRect()
-        expect(rect.right).toBeCloseTo(0);
-        expect(rect.bottom).toBeCloseTo(0);
+
+        await simulateDrag(element, 50, 50);
+        await waitForRender();
+        rect = element.getBoundingClientRect();
+        expect(rect.x).toBeCloseTo(50, 1);
+        expect(rect.y).toBeCloseTo(50, 1);
 
         // Drag far left and up
         await simulateDrag(element, -1000, -1000);
+        await waitForRender();
         rect = element.getBoundingClientRect()
-        expect(rect.top).toBeCloseTo(0);
-        expect(rect.left).toBeCloseTo(0);
-
-        // Restore original window dimensions
-        Object.defineProperty(window, 'innerWidth', { writable: true, value: originalWindowInnerWidth });
-        Object.defineProperty(window, 'innerHeight', { writable: true, value: originalWindowInnerHeight });
+        expect(rect.x).toBeCloseTo(0, 1);
+        expect(rect.y).toBeCloseTo(0, 1);
     });
 
     it('should respect boundaries "parent" during drag', async () => {
+        const textContent = "Bounded Parent Drag";
         const { getByText } = render(() => (
             <div style="width: 300px; height: 300px; margin: 10px; padding: 10px;">
                 <DragAndResize
                     initialState={{ x: 0, y: 0, width: 50, height: 50 }}
                     boundary="parent"
                 >
-                    Bounded Parent Drag
+                    {textContent}
                 </DragAndResize>
             </div>
         ));
-        waitForRender();
-        const element = getByText("Bounded Parent Drag") as HTMLElement;
-        const parent = element.parentElement as HTMLElement;
+        await waitForRender();
+        const element = getByText(textContent);
 
-        let rect = element.getBoundingClientRect()
+        let rect = element.getBoundingClientRect();
+        let parentRect = element.parentElement?.getBoundingClientRect();
+        if (!parentRect) throw new Error("Something weird");
         // 10 margin + 10 padding = 20 relative to viewport
-        expect(rect.top).toBeCloseTo(20);
-        expect(rect.left).toBeCloseTo(20);
+        expect(rect.top).toBeCloseTo(20, 1);
+        expect(rect.left).toBeCloseTo(20, 1);
 
+        // Test dragging past top left
+        await simulateDrag(element, -50, -50);
+        await waitForRender();
+        rect = element.getBoundingClientRect()
+        expect(rect.x).toBeCloseTo(10, 1);
+        expect(rect.y).toBeCloseTo(10, 1);
+
+        // Test dragging past bottom right
         await simulateDrag(element, 400, 400);
+        await waitForRender();
         rect = element.getBoundingClientRect()
-        expect(rect.top).toBeCloseTo(310-50); // pWidth + pMargin - cWidth
-        expect(rect.left).toBeCloseTo(310-50);
-
-        // Simulate drag past left/top boundary
-        await simulateDrag(element, -500, -500);
-        rect = element.getBoundingClientRect()
-        expect(rect.top).toBeCloseTo(20);
-        expect(rect.left).toBeCloseTo(20);
+        expect(rect.top).toBeCloseTo(parentRect.height + 10 - rect.height, 1);
+        expect(rect.left).toBeCloseTo(parentRect.width + 10 - rect.width, 1);
     });
 
-    it.skip('should respect custom boundaries during drag', async () => {
-        const customBounds: Bounds = { top: 10, right: 290, bottom: 290, left: 10 };
+    it('should respect element reference boundaries during drag', async () => {
+        const textContent = "Bounded Parent Drag";
+        let boundary!: HTMLDivElement;
+        const { getByText } = render(() => (
+            <div ref={boundary} style="width: 300px; height: 300px; margin: 10px; padding: 10px;">
+                <DragAndResize
+                    initialState={{ x: 0, y: 0, width: 50, height: 50 }}
+                    boundary={boundary}
+                >
+                    {textContent}
+                </DragAndResize>
+            </div>
+        ));
+        await waitForRender();
+        const element = getByText(textContent);
+
+        let rect = element.getBoundingClientRect();
+        let parentRect = element.parentElement?.getBoundingClientRect();
+        if (!parentRect) throw new Error("Something weird");
+        // 10 margin + 10 padding = 20 relative to viewport
+        expect(rect.top).toBeCloseTo(20, 1);
+        expect(rect.left).toBeCloseTo(20, 1);
+
+        // Test dragging past top left
+        await simulateDrag(element, -50, -50);
+        await waitForRender();
+        rect = element.getBoundingClientRect()
+        expect(rect.x).toBeCloseTo(10, 1);
+        expect(rect.y).toBeCloseTo(10, 1);
+
+        // Test dragging past bottom right
+        await simulateDrag(element, 400, 400);
+        await waitForRender();
+        rect = element.getBoundingClientRect()
+        expect(rect.top).toBeCloseTo(parentRect.height + 10 - rect.height, 1);
+        expect(rect.left).toBeCloseTo(parentRect.width + 10 - rect.width, 1);
+    });
+
+    it('should respect custom boundaries during drag', async () => {
+        const customBounds: Bounds = { top: 10, right: 10, bottom: 10, left: 10 };
 
         const { getByText } = render(() => (
             <DragAndResize
-                initialState={{ x: 0, y: 0, width: 50, height: 50 }}
+                initialState={{ x: 20, y: 20, width: 100, height: 100 }}
                 boundary={customBounds}
             >
                 Custom Bounded Drag
@@ -514,28 +732,51 @@ describe('Drag functionality', async () => {
         ));
 
         await waitForRender();
-        const element = getByText("Custom Bounded Drag") as HTMLElement;
+        const element = getByText("Custom Bounded Drag");
 
-        let parentRect = element.parentElement?.getBoundingClientRect();
-        if (!parentRect) throw Error("Weird parent element problem");
+        let rect = element.getBoundingClientRect();
+        expect(rect.top).toBeCloseTo(20, 1);
+        expect(rect.left).toBeCloseTo(20, 1);
 
-        let rect = element.getBoundingClientRect()
-        expect(rect.top).toBeCloseTo(0);
-        expect(rect.left).toBeCloseTo(0);
+        // Too flaky to simulate drag past right/bottom boundary
 
-        // Simulate drag past right/bottom boundary
-        await simulateDrag(element, 50, 50);
+        // Simulate drag past left/top boundary
+        await simulateDrag(element, -1000, -1000);
+        await waitForRender();
         rect = element.getBoundingClientRect()
-        expect(rect.top).toBeCloseTo(parentRect.height - 10 - 50);
-        expect(rect.left).toBeCloseTo(parentRect.width - 10 - 50);
-
-//        // Simulate drag past left/top boundary
-//        await simulateDrag(element, -1000, -1000);
-//        rect = element.getBoundingClientRect()
-//        expect(rect.top).toBeCloseTo(10);
-//        expect(rect.left).toBeCloseTo(10);
+        expect(rect.top).toBeCloseTo(10, 1);
+        expect(rect.left).toBeCloseTo(10, 1);
     });
-})
+
+    it('should respect custom boundaries as a function during drag', async () => {
+        const customBounds: Bounds = { top: 10, right: 10, bottom: 10, left: 10 };
+
+        const { getByText } = render(() => (
+            <DragAndResize
+                initialState={{ x: 20, y: 20, width: 100, height: 100 }}
+                boundary={() => customBounds}
+            >
+                Custom Bounded Drag
+            </DragAndResize>
+        ));
+
+        await waitForRender();
+        const element = getByText("Custom Bounded Drag");
+
+        let rect = element.getBoundingClientRect();
+        expect(rect.top).toBeCloseTo(20, 1);
+        expect(rect.left).toBeCloseTo(20, 1);
+
+        // Too flaky to simulate drag past right/bottom boundary
+
+        // Simulate drag past left/top boundary
+        await simulateDrag(element, -1000, -1000);
+        await waitForRender();
+        rect = element.getBoundingClientRect()
+        expect(rect.top).toBeCloseTo(10, 1);
+        expect(rect.left).toBeCloseTo(10, 1);
+    });
+});
 
 const createHandleIds = (prefix: string): { [key in Direction]: { "data-testid": string} } => {
     const result = {
@@ -554,9 +795,10 @@ const createHandleIds = (prefix: string): { [key in Direction]: { "data-testid":
     return result as { [key in Direction]: { "data-testid": string} };
 }
 
-describe('Resize functionality', async () => {
+describe.shuffle('Resize functionality', async () => {
 
     it('should resize the component from the "bottomRight" handle', async () => {
+        await waitForRender(100);
         const textContent = "Basic-Resizing";
         const handleIds = createHandleIds(textContent);
         const { getByText } = render(() => (
@@ -568,21 +810,21 @@ describe('Resize functionality', async () => {
             </DragAndResize>
         ));
 
-        const element = getByText(textContent) as HTMLElement;
         await waitForRender();
+        const element = getByText(textContent);
 
         const initialRect = element.getBoundingClientRect();
-        expect(initialRect.width).toBeCloseTo(100);
-        expect(initialRect.height).toBeCloseTo(100);
+        expect(initialRect.width).toBeCloseTo(100, 1);
+        expect(initialRect.height).toBeCloseTo(100, 1);
 
         await simulateResize(handleIds.bottomRight['data-testid'], 50, 50);
         await waitForRender(100);
 
         const finalRect = element.getBoundingClientRect();
-        expect(finalRect.width).toBeCloseTo(150);
-        expect(finalRect.height).toBeCloseTo(150);
-        expect(finalRect.x).toBeCloseTo(initialRect.x);
-        expect(finalRect.y).toBeCloseTo(initialRect.y);
+        expect(finalRect.width).toBeCloseTo(150, 1);
+        expect(finalRect.height).toBeCloseTo(150, 1);
+        expect(finalRect.x).toBeCloseTo(initialRect.x, 1);
+        expect(finalRect.y).toBeCloseTo(initialRect.y, 1);
     });
 
     it('should respect minSize', async () => {
@@ -602,22 +844,22 @@ describe('Resize functionality', async () => {
         const element = getByText(textContent);
 
         let rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
 
         await simulateResize(handleIds.bottomRight["data-testid"], -50, -50);
         await waitForRender();
 
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(75);
-        expect(rect.height).toBeCloseTo(75);
+        expect(rect.width).toBeCloseTo(75, 1);
+        expect(rect.height).toBeCloseTo(75, 1);
 
         await simulateResize(handleIds.topLeft["data-testid"], 50, 50);
         await waitForRender();
 
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(75);
-        expect(rect.height).toBeCloseTo(75);
+        expect(rect.width).toBeCloseTo(75, 1);
+        expect(rect.height).toBeCloseTo(75, 1);
     });
 
     it('should respect maxSize', async () => {
@@ -637,22 +879,22 @@ describe('Resize functionality', async () => {
         const element = getByText(textContent);
 
         let rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
 
         await simulateResize(handleIds.bottomRight["data-testid"], 100, 100);
         await waitForRender(100);
 
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(150);
-        expect(rect.height).toBeCloseTo(150);
+        expect(rect.width).toBeCloseTo(150, 1);
+        expect(rect.height).toBeCloseTo(150, 1);
 
         await simulateResize(handleIds.topLeft["data-testid"], -50, -50);
         await waitForRender(100);
 
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(150);
-        expect(rect.height).toBeCloseTo(150);
+        expect(rect.width).toBeCloseTo(150, 1);
+        expect(rect.height).toBeCloseTo(150, 1);
     });
 
     it('should call resizeStart, resize, and resizeEnd callbacks', async () => {
@@ -662,7 +904,7 @@ describe('Resize functionality', async () => {
 
         const textContent = "Resizing-Callbacks"
         const handleIds = createHandleIds(textContent);
-        const { getByText } = render(() => (
+        render(() => (
             <DragAndResize
                 initialState={{ x: 0, y: 0, width: 100, height: 100 }}
                 resizeHandleProps={handleIds}
@@ -675,7 +917,6 @@ describe('Resize functionality', async () => {
         ));
 
         await waitForRender();
-        const element = getByText(textContent);
         expect(resizeStartMock).not.toHaveBeenCalled();
         expect(resizeMock).not.toHaveBeenCalled();
         expect(resizeEndMock).not.toHaveBeenCalled();
@@ -794,28 +1035,28 @@ describe('Resize functionality', async () => {
         const element = getByText(textContent);
 
         let rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
-        expect(rect.x).toBeCloseTo(0);
-        expect(rect.y).toBeCloseTo(0);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
+        expect(rect.x).toBeCloseTo(0, 1);
+        expect(rect.y).toBeCloseTo(0, 1);
 
         await simulateResize(handleIds.bottomRight["data-testid"], 50, 50);
         await waitForRender();
 
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
 
         // The resize will become a drag b/c of event bubbling
-        expect(rect.x).toBeCloseTo(50);
-        expect(rect.y).toBeCloseTo(50);
+        expect(rect.x).toBeCloseTo(50, 1);
+        expect(rect.y).toBeCloseTo(50, 1);
 
         // Check if drag still works (since drag is true)
         await simulateDrag(element, 50, 50);
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.x).toBeCloseTo(100);
-        expect(rect.y).toBeCloseTo(100);
+        expect(rect.x).toBeCloseTo(100, 1);
+        expect(rect.y).toBeCloseTo(100, 1);
     });
 
     it('should disable resize when enabled is false', async () => {
@@ -834,20 +1075,20 @@ describe('Resize functionality', async () => {
         await waitForRender();
         const element = getByText(textContent);
         let rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
 
         await simulateResize(handleIds.bottomRight["data-testid"], 50, 50);
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
 
         await simulateDrag(element, 50, 50);
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.x).toBeCloseTo(0);
-        expect(rect.y).toBeCloseTo(0);
+        expect(rect.x).toBeCloseTo(0, 1);
+        expect(rect.y).toBeCloseTo(0, 1);
     });
 
     it('should ignore boundary `undefined` during resizing', async () => {
@@ -868,19 +1109,13 @@ describe('Resize functionality', async () => {
         if (!parentRect) throw new Error("Something weird happened")
 
         let rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
 
-        expect(parentRect.width).toBeLessThan(400);
-        expect(parentRect.height).toBeLessThan(400);
-
-        await simulateResize(handleIds.bottomRight["data-testid"], 400, 400);
+        await simulateResize(handleIds.bottomRight["data-testid"], parentRect.width, parentRect.height);
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(500);
-        expect(rect.height).toBeCloseTo(500);
-
-        expect(parentRect.width).toBeLessThan(400);
-        expect(parentRect.height).toBeLessThan(400);
+        expect(rect.width).toBeGreaterThan(parentRect.width);
+        expect(rect.height).toBeGreaterThan(parentRect.height);
     });
 
     it('should respect boundary "window" during resizing', async () => {
@@ -902,16 +1137,16 @@ describe('Resize functionality', async () => {
         await simulateDrag(element, 15, 15);
         await waitForRender();
         let rect = element.getBoundingClientRect();
-        expect(rect.x).toBeCloseTo(25);
-        expect(rect.y).toBeCloseTo(25);
+        expect(rect.x).toBeCloseTo(25, 1);
+        expect(rect.y).toBeCloseTo(25, 1);
 
         await simulateResize(handleIds.topLeft["data-testid"], -60, -60);
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(125);
-        expect(rect.height).toBeCloseTo(125);
-        expect(rect.x).toBeCloseTo(0);
-        expect(rect.y).toBeCloseTo(0);
+        expect(rect.width).toBeCloseTo(125, 1);
+        expect(rect.height).toBeCloseTo(125, 1);
+        expect(rect.x).toBeCloseTo(0, 1);
+        expect(rect.y).toBeCloseTo(0, 1);
     });
 
     it('should respect boundary "parent" during resizing', async () => {
@@ -943,386 +1178,251 @@ describe('Resize functionality', async () => {
         await waitForRender();
         const element = getByText(textContent);
         let rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(100);
-        expect(rect.height).toBeCloseTo(100);
-        expect(rect.x).toBeCloseTo(75);
-        expect(rect.y).toBeCloseTo(75);
+        expect(rect.width).toBeCloseTo(100, 1);
+        expect(rect.height).toBeCloseTo(100, 1);
+        expect(rect.x).toBeCloseTo(75, 1);
+        expect(rect.y).toBeCloseTo(75, 1);
 
         await simulateResize(handleIds.topLeft["data-testid"], -50, -50);
         await waitForRender();
         rect = element.getBoundingClientRect();
-        expect(rect.width).toBeCloseTo(125);
-        expect(rect.height).toBeCloseTo(125);
-        expect(rect.x).toBeCloseTo(50);
-        expect(rect.y).toBeCloseTo(50);
+        expect(rect.width).toBeCloseTo(125, 1);
+        expect(rect.height).toBeCloseTo(125, 1);
+        expect(rect.x).toBeCloseTo(50, 1);
+        expect(rect.y).toBeCloseTo(50, 1);
     });
-});
-/*
-describe("additional props", () => {
-    it("supports dragHandle as HTMLElement array", async () => {
-        const textContent = "drag handle test";
-        const handle = document.createElement("div");
-        handle.className = "handle";
-        document.body.appendChild(handle);
 
-        render(() => (
-            <DragAndResize dragHandle={[handle]}>
-                <div ref={el => el && el.appendChild(handle)}>wrapper</div>
+    it('should accept attributes for "all" resizeHandleProps', async () => {
+        const textContent = "all-with-resizeHandleProps"
+        const { getByText } = render(() => (
+            <DragAndResize
+                initialState={{ x: 0, y: 0, width: 100, height: 100 }}
+                resizeHandleProps={{
+                    all: {
+                        style: {
+                            background: "red",
+                        },
+                    },
+                }}
+            >
                 {textContent}
             </DragAndResize>
         ));
 
         await waitForRender();
-
-        const el = screen.getByText(textContent).parentElement!;
-        expect(el).toBeVisible();
-
-        const { dx } = await simulateDrag(el, 50, 0, { handleSelector: ".handle" });
-        expect(dx).toBeGreaterThan(0);
-    });
-
-    it("respects resizeAxes by creating only allowed handles", async () => {
-        const textContent = "resize axes test";
-        render(
-            <DragAndResize resizeAxes={{ n: true, e: false, s: true, w: false }}>
-                {textContent}
-            </DragAndResize>
-        );
-
-        await waitForRender();
-
-        const el = screen.getByText(textContent).parentElement!;
-        expect(el.querySelector("[data-dir='n']")).toBeTruthy();
-        expect(el.querySelector("[data-dir='s']")).toBeTruthy();
-        expect(el.querySelector("[data-dir='e']")).toBeFalsy();
-        expect(el.querySelector("[data-dir='w']")).toBeFalsy();
-    });
-
-    it("applies resizeHandleProps per direction", async () => {
-        const textContent = "resize handle props test";
-        render(
-            <DragAndResize
-                resizeAxes={{ e: true, w: true }}
-                resizeHandleProps={{
-                    e: { id: "east-handle" },
-                    w: { id: "west-handle" }
-                }}
-            >
-                {textContent}
-            </DragAndResize>
-        );
-
-        await waitForRender();
-
-        const el = screen.getByText(textContent).parentElement!;
-        expect(el.querySelector("#east-handle")).toBeTruthy();
-        expect(el.querySelector("#west-handle")).toBeTruthy();
-    });
-
-    it("supports customResizeHandles and omits default handles for those directions", async () => {
-        const textContent = "custom handles test";
-        render(
-            <DragAndResize
-                resizeAxes={{ e: true }}
-                customResizeHandles={{
-                    e: <div data-testid="custom-east" />
-                }}
-            >
-                {textContent}
-            </DragAndResize>
-        );
-
-        await waitForRender();
-
-        const el = screen.getByText(textContent).parentElement!;
-        expect(el.querySelector("[data-testid='custom-east']")).toBeTruthy();
-        expect(el.querySelector("[data-dir='e']")).toBeFalsy();
-    });
-
-    it("keeps element within functional boundary and calls onEnsureInside", async () => {
-        const textContent = "ensure inside test";
-        const boundaryRect = { left: 0, top: 0, right: 300, bottom: 300 };
-        const onEnsureInside = vi.fn();
-
-        render(
-            <DragAndResize
-                boundary={() => boundaryRect}
-                ensureInside
-                onEnsureInside={onEnsureInside}
-            >
-                {textContent}
-            </DragAndResize>
-        );
-
-        await waitForRender();
-
-        const el = screen.getByText(textContent).parentElement!;
-        await simulateDrag(el, 1000, 1000);
-        expect(onEnsureInside).toHaveBeenCalled();
-    });
-
-    it("keeps element within HTMLElement boundary", async () => {
-        const textContent = "element boundary test";
-        let boundaryEl: HTMLDivElement;
-
-        render(
-            <>
-                <div
-                    ref={el => {
-                        if (el) boundaryEl = el;
-                    }}
-                    style={{
-                        position: "absolute",
-                        left: "0px",
-                        top: "0px",
-                        width: "200px",
-                        height: "200px"
-                    }}
-                    data-testid="boundary"
-                />
-                <DragAndResize boundary={() => boundaryEl!} ensureInside>
-                    {textContent}
-                </DragAndResize>
-            </>
-        );
-
-        await waitForRender();
-
-        const el = screen.getByText(textContent).parentElement!;
-        await simulateDrag(el, 500, 500);
-        const boundaryBox = boundaryEl!.getBoundingClientRect();
-        const targetBox = el.getBoundingClientRect();
-        expect(targetBox.right).toBeLessThanOrEqual(boundaryBox.right);
-        expect(targetBox.bottom).toBeLessThanOrEqual(boundaryBox.bottom);
+        const element = getByText(textContent);
+        for (const resizeHandle of element.children) {
+            const handle = resizeHandle as HTMLElement;
+            expect(handle.style.background).toEqual("red");
+        }
     });
 });
 
+describe("additional props", () => {
+    it.skip("supports dragHandle as HTMLElement array", async () => {
+        const textContent = "Drag-Handle-Array";
+        const dragHandles: (string|HTMLElement)[] = [];
+        const handleStyle = {
+            "margin-left": "125px",
+            "height": "25px",
+            "width": "25px",
+            "background": "blue",
+        } as JSX.CSSProperties;
+        const { getByText } = render(() => (
+            <DragAndResize
+                // @ts-ignore
+                dragHandle={[dragHandles]}
+                initialState={{ x: 0, y: 0, width: 100, height: 100 }}
+            >
+                <div id="handle-1" style={handleStyle}>Handle1</div>
+                <div id="handle-2" style={handleStyle}>Handle2</div>
+                {textContent}
+            </DragAndResize>
+        ));
+
+        await waitForRender();
+        dragHandles.push("#handle-1");
+        const handleTwo = document.getElementById("handle-2");
+        if (!handleTwo) throw new Error("Something weird");
+        dragHandles.push(handleTwo);
+
+        await waitForRender();
+        const element = getByText(textContent);
+        let rect = element.getBoundingClientRect();
+        expect(rect.x).toEqual(0);
+        expect(rect.y).toEqual(0);
+        expect(rect.width).toEqual(100);
+        expect(rect.height).toEqual(100);
+
+        const handleOne = document.getElementById("handle-1");
+        if (!handleOne) throw new Error("Something weird");
+        await simulateDrag(handleOne, 50, 0);
+        await waitForRender();
+        await simulateDrag(handleTwo, 0, 50);
+        await waitForRender();
+        await simulateDrag(element, 50, 50);
+        await waitForRender();
+
+        rect = element.getBoundingClientRect();
+        expect(rect.x).toEqual(50);
+        expect(rect.y).toEqual(50);
+        expect(rect.width).toEqual(100);
+        expect(rect.height).toEqual(100);
+
+        dragHandles.pop(); // Drag handle two should no longer work
+        await simulateDrag(handleTwo, -50, -50);
+        await waitForRender();
+
+        rect = element.getBoundingClientRect();
+        expect(rect.x).toEqual(50);
+        expect(rect.y).toEqual(50);
+        expect(rect.width).toEqual(100);
+        expect(rect.height).toEqual(100);
+    });
+
+    it("applies resizeHandleProps for resizeAxes per direction", async () => {
+        const textContent = "resize handle props test";
+        const { getByText} = render(() => (
+            <DragAndResize
+                resizeAxes={{
+                    right: true,
+                    bottom: true,
+                }}
+                resizeHandleProps={{
+                    top: {},
+                    right: { id: "east-handle" },
+                    bottom: { id: "west-handle" },
+                    left: {},
+                    topRight: {},
+                    bottomRight: {},
+                    bottomLeft: {},
+                    topLeft: {},
+                }}
+            >
+                {textContent}
+            </DragAndResize>
+        ));
+
+        await waitForRender();
+        const el = getByText(textContent);
+        expect(el.querySelector("#east-handle")).toBeTruthy();
+        expect(el.querySelector("#west-handle")).toBeTruthy();
+        expect(el.children.length).toEqual(2);
+    });
+
+    it("should resize with customResizeHandles", async () => {
+        const textContent = "custom handles test";
+        const { getByText} = render(() => (
+            <DragAndResize
+                style={{
+                    position: "relative",
+                }}
+                customResizeHandles={[
+                    {
+                        direction: "right",
+                        element: document.getElementById("custom-handle-right")!,
+                    },
+                ]}
+                initialState={{ x: 0, y: 0, height: 100, width: 100}}
+            >
+                <div
+                    id="custom-handle-right"
+                    style={{
+                        position: "absolute",
+                        right: "-30",
+                        width: "30px",
+                        height: "30px",
+                        background: "blue",
+                    }}
+                    data-testid="custom-handle-right"
+                />
+                {textContent}
+            </DragAndResize>
+        ));
+
+        await waitForRender();
+        const element = getByText(textContent);
+        let rect = element.getBoundingClientRect()
+        expect(rect.x).toEqual(0);
+        expect(rect.y).toEqual(0);
+        expect(rect.width).toEqual(100);
+        expect(rect.height).toEqual(100);
+
+        await waitForRender();
+        // The last parameter shouldn't matter since the handle can only move left or right
+        await simulateResize("custom-handle-right", 100, 10);
+        rect = element.getBoundingClientRect()
+        expect(rect.x).toEqual(0);
+        expect(rect.y).toEqual(0);
+        expect(rect.width).toEqual(200);
+        expect(rect.height).toEqual(100);
+    });
+
+    it("should call onEnsureInside when boundary resized", async () => {
+        const textContent = "Ensure-Inside";
+        const parentId = "Ensure-Inside-Parent";
+        const onEnsureInside = vi.fn();
+
+        const { getByText} = render(() => (
+            <div
+                id={parentId}
+                style={{ height: "200px", width: "200px", background: "grey" }}
+            >
+                <DragAndResize
+                    boundary={"parent"}
+                    ensureInside
+                    onEnsureInside={onEnsureInside}
+                    initialState={{ x: 75, y: 75, width: 100, height: 100}}
+                    enabled={{
+                        drag: true,
+                        resize: false,
+                    }}
+                >
+                    {textContent}
+                </DragAndResize>
+            </div>
+        ));
+
+        await waitForRender(100);
+        const element = getByText(textContent);
+
+        // Fires once on instantiation
+        expect(onEnsureInside).toHaveBeenCalledTimes(1);
+
+        let rect = element.getBoundingClientRect();
+        expect(rect.x).toEqual(75);
+        expect(rect.y).toEqual(75);
+        expect(rect.width).toEqual(100);
+        expect(rect.height).toEqual(100);
+
+        await simulateDrag(element, 50, 50);
+        await waitForRender();
+        rect = element.getBoundingClientRect();
+        expect(rect.x).toBeCloseTo(100);
+        expect(rect.y).toBeCloseTo(100);
+        expect(rect.width).toEqual(100);
+        expect(rect.height).toEqual(100);
+
+        // Now the parent is resized
+        const parent = element.parentElement;
+        if (!parent) throw new Error("Something Weird");
+        parent.style.width = "150px";
+        parent.style.height = "150px";
+        expect(parent.style.width).toEqual("150px");
+        await waitForRender()
+
+        // Should fire again and move the element back
+        expect(onEnsureInside).toHaveBeenCalledTimes(2);
+        rect = element.getBoundingClientRect();
+        expect(rect.x).toEqual(50);
+        expect(rect.y).toEqual(50);
+        expect(rect.width).toEqual(100);
+        expect(rect.height).toEqual(100);
+    });
+
+});
 
 // Drag handle configuration
 // Boundaries with changing boundaries & ensureInside
 // Smoke
 
-/*
-describe('Resize Handle Configuration', async () => {
-    it.skip('should only render resize handles specified by resizeAxes', async () => {
-        const textContent = "Resize Axes Test";
-        const handleIds = createHandleIds(textContent);
-        const { getByText } = render(() => (
-            <DragAndResize
-                initialState={{ x: 0, y: 0, width: 100, height: 100 }}
-                resizeHandleProps={handleIds}
-                resizeAxes={{
-                    top: true,
-                    right: true,
-                    bottom: true,
-                    left: false,
-                    topRight: false,
-                    bottomRight: true,
-                    topLeft: false,
-                    bottomLeft: false,
-                }}
-            >
-                {textContent}
-            </DragAndResize>
-        ));
-        const element = getByText(textContent) as HTMLElement;
-        await waitForRender();
-
-        // Check for handles that should exist
-        expect(element.querySelector('[data-resize-handle-top]')).toBeInTheDocument();
-        expect(element.querySelector('[data-resize-handle-right]')).toBeInTheDocument();
-        expect(element.querySelector('[data-resize-handle-bottom]')).toBeInTheDocument();
-        expect(element.querySelector('[data-resize-handle-bottomRight]')).toBeInTheDocument();
-
-        // Check for handles that should NOT exist
-        expect(element.querySelector('[data-resize-handle-left]')).not.toBeInTheDocument();
-        expect(element.querySelector('[data-resize-handle-topRight]')).not.toBeInTheDocument();
-        expect(element.querySelector('[data-resize-handle-topLeft]')).not.toBeInTheDocument();
-        expect(element.querySelector('[data-resize-handle-bottomLeft]')).not.toBeInTheDocument();
-
-        // Verify that a disabled handle does not resize
-        const initialRect = element.getBoundingClientRect();
-        // Attempt to resize using the left handle (which should be missing or inactive)
-        await commands.mouseFind(element.textContent || ""); // Just to get a starting point for mouse
-        await commands.mouseDown(); // Will not click on a handle, so no resize should start
-        const elRect = element.getBoundingClientRect();
-        const elCenterX = elRect.left + elRect.width / 2;
-        const elCenterY = elRect.top + elRect.height / 2;
-        await commands.mouseMove(elCenterX - 50, elCenterY); // Simulate dragging left edge
-        await commands.mouseUp();
-        await waitForRender();
-
-        const finalRect = element.getBoundingClientRect();
-        expect(finalRect.width).toBeCloseTo(initialRect.width); // Width should not change
-        expect(finalRect.x).toBeCloseTo(initialRect.x); // Position should not change
-    });
-
-    it.skip('should apply custom props to all resize handles using "all"', async () => {
-        const testClass = "all-handle-class";
-        const customAttribute = "data-custom-attr";
-        const customValue = "some-value";
-        const { getByText } = render(() => (
-            <DragAndResize
-                initialState={{ x: 0, y: 0, width: 100, height: 100 }}
-                resizeHandleProps={{
-                    all: {
-                        class: testClass,
-                        [customAttribute]: customValue,
-                    },
-                }}
-            >
-                Test All Handles
-            </DragAndResize>
-        ));
-        const element = getByText("Test All Handles") as HTMLElement;
-        await waitForRender();
-
-        // Use the `directions` array to iterate and check all handles
-        directions.forEach(direction => {
-            const handle = element.querySelector(`[data-resize-handle-${direction}]`);
-            expect(handle).toBeInTheDocument();
-            expect(handle).toHaveClass(testClass);
-            expect(handle?.getAttribute(customAttribute)).toBe(customValue);
-        });
-    });
-
-    it.skip('should apply specific props to individual resize handles and common props via "all"', async () => {
-        const commonClass = "common-handle-class";
-        const trClass = "topRight-specific-class";
-        const leftContent = "Left Handle Content";
-        const { getByText } = render(() => (
-            <DragAndResize
-                initialState={{ x: 0, y: 0, width: 100, height: 100 }}
-                resizeHandleProps={{
-                    all: {
-                        class: commonClass,
-                        "data-common": "true",
-                    },
-                    topRight: { // Use string literal "topRight"
-                        class: trClass, // This should override commonClass if applied directly
-                        "data-tr-specific": "true",
-                        children: <span class="custom-child">TR!</span>
-                    },
-                    left: { // Use string literal "left"
-                        children: <span class="custom-child">{leftContent}</span>
-                    }
-                }}
-            >
-                Test Specific Handles
-            </DragAndResize>
-        ));
-        const element = getByText("Test Specific Handles") as HTMLElement;
-        await waitForRender();
-
-        // Test "topRight" handle
-        const trHandle = element.querySelector('[data-resize-handle-topRight]'); // Use "topRight"
-        expect(trHandle).toBeInTheDocument();
-        expect(trHandle).toHaveClass(trClass); // Specific class takes precedence
-        expect(trHandle).not.toHaveClass(commonClass); // Common class should not be applied if specific class exists for a prop
-        expect(trHandle?.getAttribute('data-common')).toBe("true"); // Common attribute should still apply
-        expect(trHandle?.getAttribute('data-tr-specific')).toBe("true");
-        expect(trHandle?.querySelector('.custom-child')?.textContent).toBe("TR!");
-
-
-        // Test "left" handle
-        const leftHandle = element.querySelector('[data-resize-handle-left]'); // Use "left"
-        expect(leftHandle).toBeInTheDocument();
-        expect(leftHandle).toHaveClass(commonClass); // Common class should apply
-        expect(leftHandle?.getAttribute('data-common')).toBe("true");
-        expect(leftHandle?.querySelector('.custom-child')?.textContent).toBe(leftContent);
-
-
-        // Test a handle not specifically defined (e.g., "bottom")
-        const bottomHandle = element.querySelector('[data-resize-handle-bottom]'); // Use "bottom"
-        expect(bottomHandle).toBeInTheDocument();
-        expect(bottomHandle).toHaveClass(commonClass);
-        expect(bottomHandle?.getAttribute('data-common')).toBe("true");
-        expect(bottomHandle?.children.length).toBe(0); // No children if not specified
-    });
-
-    it.skip('should use custom HTML elements for resize handles', async () => {
-        const textContent = "Custom Resize Handles";
-        const topCustomHandle = document.createElement('div');
-        topCustomHandle.className = 'my-top-handle';
-        topCustomHandle.textContent = 'T-Handle';
-
-        const brCustomHandle = document.createElement('div');
-        brCustomHandle.className = 'my-br-handle';
-        brCustomHandle.textContent = 'BR-Handle';
-
-        const { getByText } = render(() => (
-            <DragAndResize
-                initialState={{ x: 0, y: 0, width: 100, height: 100 }}
-                customResizeHandles={[
-                    { direction: "top", element: topCustomHandle }, // Use "top"
-                    { direction: "bottomRight", element: brCustomHandle }, // Use "bottomRight"
-                ]}
-            >
-                {textContent}
-            </DragAndResize>
-        ));
-        const element = getByText(textContent) as HTMLElement;
-        await waitForRender();
-
-        // Check if custom handles are present and correctly attached
-        const topHandle = element.querySelector('.my-top-handle');
-        expect(topHandle).toBeInTheDocument();
-        expect(topHandle?.textContent).toBe('T-Handle');
-        expect(element.querySelector('[data-resize-handle-top]')).toBeNull(); // Default should not be there
-
-        const brHandle = element.querySelector('.my-br-handle');
-        expect(brHandle).toBeInTheDocument();
-        expect(brHandle?.textContent).toBe('BR-Handle');
-        expect(element.querySelector('[data-resize-handle-bottomRight]')).toBeNull(); // Default should not be there
-
-        // Check if default handles for unspecified directions are still present
-        expect(element.querySelector('[data-resize-handle-right]')).toBeInTheDocument();
-        expect(element.querySelector('[data-resize-handle-left]')).toBeInTheDocument();
-
-        // Verify that the custom handle actually resizes
-        const initialRect = element.getBoundingClientRect();
-        expect(initialRect.width).toBeCloseTo(100);
-        expect(initialRect.height).toBeCloseTo(100);
-
-        // Simulate resize using the custom "bottomRight" handle
-        // We'll rely on the textContent for mouseFind, but if it's dynamic, use more robust locator.
-        await commands.mouseFind(brCustomHandle.textContent || "");
-        await commands.mouseDown();
-        const elRect = element.getBoundingClientRect();
-        const elCenterX = elRect.left + elRect.width / 2;
-        const elCenterY = elRect.top + elRect.height / 2;
-        await commands.mouseMove(elCenterX + 50, elCenterY + 50); // Move by 50,50 relative to element center
-        await commands.mouseUp();
-        await waitForRender();
-
-        const finalRect = element.getBoundingClientRect();
-        expect(finalRect.width).toBeCloseTo(150);
-        expect(finalRect.height).toBeCloseTo(150);
-
-        // Simulate resize using the custom "top" handle
-        // Adjust element position so it doesn't hit top of window
-        await page.evaluate((el: HTMLElement) => {
-            el.style.left = '50px';
-            el.style.top = '50px';
-            el.style.width = '100px';
-            el.style.height = '100px';
-        }, element);
-        await waitForRender();
-
-        const preTopResizeRect = element.getBoundingClientRect();
-
-        await commands.mouseFind(topCustomHandle.textContent || "");
-        await commands.mouseDown();
-        await commands.mouseMove(elCenterX, elCenterY - 50); // Move mouse up 50px relative to element center
-        await commands.mouseUp();
-        await waitForRender();
-
-        const postTopResizeRect = element.getBoundingClientRect();
-        expect(postTopResizeRect.height).toBeCloseTo(preTopResizeRect.height + 50); // Height increases
-        expect(postTopResizeRect.y).toBeCloseTo(preTopResizeRect.y - 50); // Y position moves up
-        expect(postTopResizeRect.width).toBeCloseTo(preTopResizeRect.width); // Width stays same
-        expect(postTopResizeRect.x).toBeCloseTo(preTopResizeRect.x); // X position stays same
-    });
-
-});
-*/

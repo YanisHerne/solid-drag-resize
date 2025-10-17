@@ -17,6 +17,19 @@ const clamp = (num: number, min: number, max: number) => {
     return Math.min(Math.max(num, min), max);
 };
 
+/**
+ * Allows for elegant forwarding of props if needed, without interfering with
+ * the local ref.
+ * @param refs - The refs to merge and treat as one
+ * @returns A function that takes in one element reference and distributes it
+ * to the input ref variables.
+ */
+const mergeDivRefs = (...refs: ((el: HTMLDivElement) => void)[]):
+    (el: HTMLDivElement) => void =>
+    (el: HTMLDivElement) => {
+        refs.filter((ref) => typeof ref === "function").forEach(ref => ref(el));
+    };
+
 export type Position = {
     x: number;
     y: number;
@@ -99,7 +112,7 @@ export type Props = {
     /**
      * A forwarded ref to access to the main element of the component.
      */
-    ref?: HTMLElement;
+    ref?: HTMLDivElement;
     /**
      * The size the component starts at before any events fire.
      */
@@ -129,7 +142,7 @@ export type Props = {
      * of `.handle`, while handles with instead an id of "handle" would
      * have querySelectors of `#handle`.
      */
-    dragHandle?: HTMLElement | string | (HTMLElement | string)[];
+    dragHandle?: Element | string | (Element | string)[];
     /**
      * If you set this prop, only those directions which are set to true will
      * have their resize handles instantiated.
@@ -249,9 +262,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     });
     createEffect(() => {
         if (props.state) setState(props.state);
-    });
-    createEffect(() => {
-        props.ref = mainElement; // eslint-disable-line
     });
 
     // The boundary is recalculated and obeyed with this observer
@@ -377,10 +387,6 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         return amended;
     };
     const onDragMove = (e: PointerEvent) => {
-        if (resizing()) {
-            onDragEnd(); // When resizing, don't drag
-            return;
-        }
         calculateBounds();
         action.proposed = {
             x: e.clientX - offset.x,
@@ -416,7 +422,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     );
 
     const onDragStart = (e: PointerEvent) => {
-        if (e.button > 1 || !mainElement || noDragging()) return;
+        if (!e.isPrimary || !mainElement || noDragging()) return;
         if (resizing()) {
             onDragEnd(); // When resizing, don't drag
             // This will be fixed with event delegation
@@ -424,6 +430,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         }
         if (props.disableUserSelect) setUserSelect(false);
         setDragging(true);
+        //mainElement.setPointerCapture(e.pointerId);
         const rect = mainElement.getBoundingClientRect();
         origin = {
             x: rect.left - state.x,
@@ -553,7 +560,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
 
     const onResizeStart: ResizeCallback = (e, dir) => {
         if (
-            e.button > 1 ||
+            !e.isPrimary ||
             !mainElement ||
             noResizing() ||
             (props.resizeAxes && props.resizeAxes[dir] === false)
@@ -626,7 +633,8 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
     }> = [];
 
     // Closure to capture direction to store correct callback
-    const binder = (args: Direction) => {
+    const bind = (args: Direction) => {
+        // Returns a callback function of one variable that calls with Direction
         return (e: PointerEvent) => onResizeStart(e, args);
     };
     createEffect(() => {
@@ -636,7 +644,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         });
         resizeHandles.length = 0;
         props.customResizeHandles.forEach((handle) => {
-            const listener = binder(handle.direction);
+            const listener = bind(handle.direction);
             handle.element.addEventListener("pointerdown", listener);
             resizeHandles.push({
                 direction: handle.direction,
@@ -661,8 +669,9 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
 
     return (
         <div
+            // @ts-expect-error (I promise this works correctly)
+            ref={mergeDivRefs(props.ref, (el) => mainElement = el)}
             {...props}
-            ref={mainElement}
             style={
                 Object.assign(
                     {
@@ -686,7 +695,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
         >
             <For each={directions}>
                 {(direction) => {
-                    let otherProps: any = undefined;
+                    let otherProps: Record<string, unknown> = {};
                     if (props.resizeHandleProps) {
                         if ("all" in props.resizeHandleProps) {
                             otherProps = props.resizeHandleProps.all;
@@ -697,7 +706,7 @@ export const DragAndResize: ParentComponent<Props> = (unmergedProps) => {
                     return (
                         <ResizeHandle
                             direction={direction}
-                            resizeCallback={onResizeStart}
+                            resizeCallback={(e, dir) => onResizeStart(e, dir)}
                             enabled={props.enabled}
                             resizeAxes={props.resizeAxes}
                             {...otherProps}

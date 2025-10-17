@@ -38,6 +38,17 @@ const mouseUp: BrowserCommand<[]> = async ( ctx ) => {
     }
 }
 
+const getScaleFloat = (inputString: string): number | undefined => {
+    const regex = /scale\(\s*(-?\d+(\.\d+)?)\s*\)/;
+    const match = inputString.match(regex);
+
+    if (match && match[1]) {
+        return parseFloat(match[1]);
+    } else {
+        return undefined;
+    }
+}
+
 const mouseFind: BrowserCommand<["byText"|"byTestId", string]> = async (
     ctx,
     locator,
@@ -51,10 +62,12 @@ const mouseFind: BrowserCommand<["byText"|"byTestId", string]> = async (
             box  = await ctx.iframe.getByTestId(elementText).boundingBox();
         if (!box) throw new Error("Could not find element in iframe");
         const { x, y, width, height } = box;
+
         await ctx.page.mouse.move(x + width / 2, y + height / 2);
     }
 }
 
+let foo: boolean = false;
 const mouseMove: BrowserCommand<["byText"|"byTestId", string, number, number]> = async (
     ctx,
     locator,
@@ -70,7 +83,19 @@ const mouseMove: BrowserCommand<["byText"|"byTestId", string, number, number]> =
             box  = await ctx.iframe.getByTestId(elementText).boundingBox();
         if (!box) throw new Error("Could not find element in iframe");
         const { x, y, width, height } = box;
-        await ctx.page.mouse.move(x + width / 2 + xMove, y + height / 2 + yMove);
+
+        const style = await ctx.page.locator("#tester-ui").getAttribute("style");
+        if (!style) throw new Error("Can't find style");
+        const scale = getScaleFloat(style) ?? 1; // Default to one
+        if (!foo) {
+            console.log("Scale: " + scale);
+            foo = true;
+        }
+        if (!scale) throw new Error("Can't find scale");
+        const scaledX = xMove * scale;
+        const scaledY = yMove * scale;
+
+        await ctx.page.mouse.move(x + width / 2 + scaledX, y + height / 2 + scaledY);
     }
 }
 
@@ -127,7 +152,12 @@ export default defineConfig(({ mode }: ConfigEnv) => {
             },
             dir: 'test',
             browser: {
+                //ui: false,
                 screenshotFailures: false,
+                viewport: {
+                    width: 1920,
+                    height: 1080,
+                },
                 enabled: true,
                 provider: 'playwright',
                 // https://vitest.dev/guide/browser/playwright

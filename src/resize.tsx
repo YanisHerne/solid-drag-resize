@@ -102,9 +102,11 @@ interface ResizeProps {
     resizeAxes?: { [key in Direction]?: boolean };
 }
 
-export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
+export const ResizeHandle: ParentComponent<ResizeProps & Record<string, unknown>> = (props) => {
+    let ref!: HTMLDivElement;
     const onResize: JSX.EventHandler<HTMLDivElement, PointerEvent> = (event) => {
         props.resizeCallback(event, props.direction);
+        ref.setPointerCapture(event.pointerId)
     };
 
     const enabled = createMemo(() => {
@@ -123,6 +125,7 @@ export const ResizeHandle: ParentComponent<ResizeProps> = (props) => {
     return (
         <Show when={rendered()}>
             <div
+                ref={ref}
                 style={Object.assign(resizeStyles[props.direction], {
                     cursor: enabled() ? cursorStyles[props.direction] : "unset",
                 })}
