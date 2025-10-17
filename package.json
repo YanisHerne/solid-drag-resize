@@ -41,7 +41,7 @@
     "test": "concurrently 'pnpm test:ssr' 'pnpm test:coverage'",
     "test:ssr": "vitest --mode ssr",
     "test:browser": "vitest --config=vitest.browser.config.ts --mode headless --browser.viewport={1920,1080}",
-    "test:coverage": "vitest --config=vitest.browser.config.ts --mode coverage --coverage --browser.viewport={1920,1080}",
+    "test:coverage": "vitest --config=vitest.browser.config.ts --mode coverage --coverage --browser.viewport={1920,1080} --browser.ui=true",
     "browser": "vitest --config=vitest.browser.config.ts",
     "prepublishOnly": "pnpm build",
     "format": "prettier --ignore-path .gitignore -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"examples/**/*.{js,ts,json,css,tsx,jsx}\"",
